@@ -1,0 +1,49 @@
+- hosts: all
+  gather_facts: no
+  become: true
+  tasks:
+  - name: create working directory
+    local_action:
+      module: tempfile
+      state: directory
+    run_once: yes
+    register: tmpdir
+    become: no
+  - name: get ssh_host_rsa_key.pub
+    fetch:
+      src: /etc/ssh/ssh_host_rsa_key.pub
+      dest: "{{ tmpdir.path }}/"
+  - name: sign host certs
+    local_action:
+      module: command
+      cmd: >
+        ssh-keygen -s /home/ansible/ssh_certs/ca_host_key -I {{inventory_hostname}} -h
+        -n {{inventory_hostname}},{{inventory_hostname}}.demi.ro,{{inventory_hostname}}.demi.lan 
+        {{tmpdir.path}}/{{inventory_hostname}}/etc/ssh/ssh_host_rsa_key.pub
+  - name: copy host cert back to hosts
+    copy:
+      src: "{{tmpdir.path}}/{{inventory_hostname}}/etc/ssh/ssh_host_rsa_key-cert.pub"
+      dest: /etc/ssh/
+  - name: Add HostCertificate to sshd
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: '^HostCertificate '
+      line: HostCertificate /etc/ssh/ssh_host_rsa_key-cert.pub
+  - name: Update known hosts file
+    lineinfile:
+      path: /etc/ssh/ssh_known_hosts
+      regex: '^@cert-authority '
+      create: yes
+      line: >
+        @cert-authority
+        {% for host in groups.all %}{{host}},{{host}}.demi.ro,{{host}}.demi.lan{{ ',' if not loop.last else ''}}{% endfor %}
+        {{ lookup('file', 'ssh_certs/ca_host_key.pub') }} 
+  - name: restart sshd
+    service:
+      name: sshd
+      state: restarted
+  - name: remove working directory
+    file:
+      path: "{{ tmpdir.path }}"
+      state: absent
+    tags: never

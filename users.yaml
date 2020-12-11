@@ -1,0 +1,57 @@
+- hosts: all
+  gather_facts: no
+  become: true
+  
+  tasks:
+  - name: create user "{{ item }}"
+    user:
+      name: "{{ item }}"
+      shell: /bin/bash
+      password: '*'
+      generate_ssh_key: yes
+      groups: sudo
+      append: yes
+    loop:
+      - char
+      - andrei
+      - lemon
+      - ansible
+      
+  - name: set authorized_key
+    authorized_key:
+      user: char
+      key: "{{item}}"
+    loop:
+      - "{{ lookup('file', 'ssh_keys/key.char@metal1.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.char@localhost.pub') }}"
+      
+  - name: set authorized_key
+    authorized_key:
+      user: andrei
+      key: "{{item}}"
+    loop:
+      - "{{ lookup('file', 'ssh_keys/key.andrei@metal1.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.andrei@ANDREI-W10.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.andrei@DESKTOP-02LV2TV.pub') }}"
+      
+  - name: set authorized_key
+    authorized_key:
+      user: lemon
+      key: "{{item}}"
+    loop:
+      - "{{ lookup('file', 'ssh_keys/key.lemon@metal1.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.lemon@whatever.pub') }}"
+      
+  - name: set authorized_key
+    authorized_key:
+      user: ansible
+      key: "{{item}}"
+    loop:
+      - "{{ lookup('file', 'ssh_keys/key.ansible@metal1.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.andrei@metal1.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.andrei@ANDREI-W10.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.andrei@DESKTOP-02LV2TV.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.lemon@metal1.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.lemon@whatever.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.char@metal1.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.char@localhost.pub') }}"

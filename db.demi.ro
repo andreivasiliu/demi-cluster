@@ -1,0 +1,18 @@
+$TTL	60
+@	IN	SOA	demi.ro. root.demi.ro. (
+			      1		; Serial
+			     60		; Refresh
+			     60		; Retry
+			     60		; Expire
+			     60 )	; Negative Cache TTL
+;
+@	IN	NS	ns1.demi.ro.
+@	IN	a	{{ ipify_public_ip }}
+
+ns1	IN	a	{{ ipify_public_ip }}
+
+www	IN	CNAME	demi.ro.
+books	IN	CNAME 	demi.ro.
+{% for host in groups.all %}
+{{ host }}	IN	AAAA	{{ hostvars[host].ansible_default_ipv6.address }}
+{% endfor %}

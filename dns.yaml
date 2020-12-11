@@ -1,0 +1,31 @@
+- hosts: all
+  gather_facts: yes
+  become: true
+
+- hosts: demis
+  gather_facts: no
+  become: true
+  tasks:
+  - name: install dns
+    package: 
+      name: bind9
+      state: latest
+  - name: copy server config
+    copy:
+      content: |
+        zone "demi.ro" {
+            type master;
+            file "/etc/bind/db.demi.ro";
+        };
+      dest: /etc/bind/named.conf.local
+  - name: get public IPv4
+    ipify_facts:
+    run_once: yes
+  - name: copy server config
+    template:
+      dest: /etc/bind/db.demi.ro
+      src: db.demi.ro
+  - name: reload dns config
+    service:
+      name: bind9
+      state: reloaded

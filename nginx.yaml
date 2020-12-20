@@ -19,6 +19,21 @@
       path: /etc/nginx/sites-enabled/site.80.conf
       src: /etc/nginx/sites-available/site.80.conf
       state: link
+  - name: copy www files
+    copy:
+      src: "www/{{item}}"
+      dest: "/var/www/html/{{item}}"
+    loop:
+      - favicon.ico
+      - grumpy-demi.png
+      - not-authorized.html
+      - robots.txt
+  - name: copy www templated files
+    template:
+      src: "www/{{item}}.j2"
+      dest: "/var/www/html/{{item}}"
+    loop:
+      - index.html
   - name: reload server config
     command: nginx -s reload
 

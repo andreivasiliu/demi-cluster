@@ -39,7 +39,10 @@ def get_cookie():
     if not user:
         return "unknown"
 
-    return "{}:{}".format(user, "secretkey")
+    with open("/var/demi/uwsgi/sso-auth/cookie_key.txt") as f:
+        secret_key = f.read()
+
+    return "{}:{}".format(user, secret_key)
 
 
 @app.route("/check_auth", methods=['GET', 'POST'])
@@ -62,7 +65,10 @@ def check_auth():
         app.logger.warn("Cannot authenticate: Unknown user!")
         abort(401)
 
-    if key != "secretkey":
+    with open("/var/demi/uwsgi/sso-auth/cookie_key.txt") as f:
+        secret_key = f.read()
+
+    if key.strip() != secret_key.strip():
         app.logger.warn("Cannot authenticate: Incorrect key!")
         abort(401)
 

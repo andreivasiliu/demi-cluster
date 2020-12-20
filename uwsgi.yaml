@@ -35,6 +35,14 @@
       - sso-auth.js
     notify: restart uwsgi
 
+  - name: generate random key
+    copy:
+      content: "{{ lookup('password', 'keys/auth_cookie_key') }}"
+      dest: /var/demi/uwsgi/sso-auth/cookie_key.txt
+      mode: "0640"
+      group: www-data
+    notify: restart uwsgi
+
   - name: copy uwsgi configuration
     copy:
       src: wsgi/sso-auth.yml

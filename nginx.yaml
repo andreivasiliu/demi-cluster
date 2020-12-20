@@ -1,24 +1,38 @@
 - hosts: demis
   gather_facts: no
   become: true
+
+  handlers:
+  - name: reload nginx
+    service:
+      name: nginx
+      state: reloaded
+  
   tasks:
   - name: install nginx
     package: 
       name: nginx
-      state: latest
+      state: present
+      
   - name: remove default nginx config
     file:
       path: /etc/nginx/sites-enabled/default
       state: absent
+    notify: reload nginx
+      
   - name: copy server config
     copy:
       src: site.80.conf
       dest: /etc/nginx/sites-available/site.80.conf
+    notify: reload nginx
+      
   - name: enable server config
     file:
       path: /etc/nginx/sites-enabled/site.80.conf
       src: /etc/nginx/sites-available/site.80.conf
       state: link
+    notify: reload nginx
+      
   - name: copy www files
     copy:
       src: "www/{{item}}"
@@ -28,80 +42,29 @@
       - grumpy-demi.png
       - not-authorized.html
       - robots.txt
+    tags: www
+    notify: reload nginx
+      
   - name: copy www templated files
     template:
       src: "www/{{item}}.j2"
       dest: "/var/www/html/{{item}}"
     loop:
       - index.html
-  - name: reload server config
-    command: nginx -s reload
-
-  - name: install pyopenssl
-    package:
-      name:
-        - python-openssl
-        - python3-openssl
-      state: latest
-  - name: create certs dir
-    file:
-      path: /var/demi/certs
-      state: directory
-  - name: create private key
-    openssl_privatekey:
-      path: /var/demi/certs/demi.ro.key
-      state: present
-  - name: create letsencrypt account key
-    openssl_privatekey:
-      path: /var/demi/certs/letsencrypt.account.key
-      state: present
-  - name: create certificate signing request
-    openssl_csr:
-      path: /var/demi/certs/demi.ro.csr
-      privatekey_path: /var/demi/certs/demi.ro.key
-      state: present
-      common_name: demi.ro
-      subject_alt_name:
-        - DNS:demi.ro
-        - DNS:www.demi.ro
-        - DNS:books.demi.ro
-  - name: create challenge
-    acme_certificate:
-      account_key_src: /var/demi/certs/letsencrypt.account.key
-      csr: /var/demi/certs/demi.ro.csr
-      fullchain_dest: /var/demi/certs/demi.ro.crt
-      acme_version: 2
-      acme_directory: https://acme-v02.api.letsencrypt.org/directory
-      terms_agreed: yes
-    register: demi_ro_challenge
-  - name: create challenge directory
-    file:
-      path: /var/www/html/.well-known/acme-challenge
-      state: directory
-  - name: create challenges
-    copy:
-      dest: /var/www/html/{{ demi_ro_challenge['challenge_data'][item]['http-01']['resource'] }}
-      content: "{{ demi_ro_challenge['challenge_data'][item]['http-01']['resource_value'] }}"
-    when: demi_ro_challenge is changed
-    loop: "{{ demi_ro_challenge['challenge_data'] | list }}"
-  - name: validate challenge
-    acme_certificate:
-      account_key_src: /var/demi/certs/letsencrypt.account.key                                                  
-      csr: /var/demi/certs/demi.ro.csr
-      fullchain_dest: /var/demi/certs/demi.ro.crt
-      acme_version: 2
-      acme_directory: https://acme-v02.api.letsencrypt.org/directory                                    
-      terms_agreed: yes
-      data: "{{ demi_ro_challenge }}"
+    tags: www
+    notify: reload nginx
       
   - name: copy server config
     copy:
       src: site.443.conf
       dest: /etc/nginx/sites-available/site.443.conf
+    notify: reload nginx
+      
   - name: enable server config
     file:
       path: /etc/nginx/sites-enabled/site.443.conf
       src: /etc/nginx/sites-available/site.443.conf
       state: link
-  - name: reload server config
-    command: nginx -s reload
+    notify: reload nginx
+      
+  - meta: flush_handlers

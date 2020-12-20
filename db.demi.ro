@@ -16,3 +16,11 @@ books	IN	CNAME 	demi.ro.
 {% for host in groups.all %}
 {{ host }}	IN	AAAA	{{ hostvars[host].ansible_default_ipv6.address }}
 {% endfor %}
+
+
+; Include files with TXT records for certificate challenge data.
+; These are created empty, but might be filled later when a challenge is needed.
+
+{% for host in groups.demis %}
+$INCLUDE /etc/bind/cert_txt.{{ host }}.include
+{% endfor %}

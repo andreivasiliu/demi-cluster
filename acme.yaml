@@ -1,0 +1,93 @@
+- hosts: demis
+  gather_facts: no
+  become: true
+
+  handlers:
+  - name: reload dns
+    service:
+      name: bind9
+      state: reloaded
+  
+  tasks:
+  - name: purge certificates
+    file:
+      path: "/var/demi/certs/{{item}}"
+      state: absent
+    loop:
+      - demi.ro.crt
+      - demi.ro.csr
+      - demi.ro.key
+    tags: [never, purge-all, purge-ssl-certs]
+    
+  - name: purge letsencrypt certificates
+    file:
+      path: "/var/demi/certs/letsencrypt.account.key"
+      state: absent
+    tags: [never, purge-all, purge-ssl-account]
+    
+  - name: install pyopenssl
+    package:
+      name:
+        - python-openssl
+        - python3-openssl
+      state: latest
+      
+  - name: create certs dir
+    file:
+      path: /var/demi/certs
+      state: directory
+      
+  - name: create private key
+    openssl_privatekey:
+      path: /var/demi/certs/demi.ro.key
+      state: present
+      
+  - name: create letsencrypt account key
+    openssl_privatekey:
+      path: /var/demi/certs/letsencrypt.account.key
+      state: present
+      
+  - name: create certificate signing request
+    openssl_csr:
+      path: /var/demi/certs/demi.ro.csr
+      privatekey_path: /var/demi/certs/demi.ro.key
+      state: present
+      common_name: "demi.ro"
+      subject_alt_name:
+        - DNS:demi.ro
+        - DNS:*.demi.ro
+        
+  - name: get acme challenge
+    acme_certificate:
+      account_key_src: /var/demi/certs/letsencrypt.account.key
+      csr: /var/demi/certs/demi.ro.csr
+      fullchain_dest: /var/demi/certs/demi.ro.crt
+      acme_version: 2
+      acme_directory: https://acme-v02.api.letsencrypt.org/directory
+      terms_agreed: yes
+      challenge: dns-01
+    register: demi_ro_challenge
+    
+  - name: prepare challenge response
+    copy:
+      dest: /etc/bind/cert_txt.{{ item }}.include
+      content: |
+        {% for challenge in hostvars[item].demi_ro_challenge.challenge_data.values() %}
+        {{ challenge['dns-01'].record }}. IN TXT {{ challenge['dns-01'].resource_value }}
+        {% endfor %}
+    when: demi_ro_challenge is changed
+    notify: reload dns
+    loop: "{{ groups.demis }}"
+
+  - meta: flush_handlers
+    
+  - name: validate challenge
+    acme_certificate:
+      account_key_src: /var/demi/certs/letsencrypt.account.key                                                  
+      csr: /var/demi/certs/demi.ro.csr
+      fullchain_dest: /var/demi/certs/demi.ro.crt
+      acme_version: 2
+      acme_directory: https://acme-v02.api.letsencrypt.org/directory
+      terms_agreed: yes
+      challenge: dns-01
+      data: "{{ demi_ro_challenge }}"

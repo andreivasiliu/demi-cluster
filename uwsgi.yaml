@@ -1,0 +1,53 @@
+- hosts: demis
+  gather_facts: no
+  become: true
+
+  handlers:
+  - name: restart uwsgi
+    service:
+      name: uwsgi
+      state: restarted
+  
+  tasks:
+  - name: install uwsgi
+    package:
+      name:
+        - uwsgi
+        - uwsgi-plugin-python3
+        - python3-google-auth
+        - python3-flask
+      state: present
+
+  - name: create directories
+    file:
+      path: /var/demi/uwsgi/sso-auth
+      mode: "0755"
+      state: directory
+
+  - name: copy sso-auth files
+    copy:
+      src: "wsgi/{{ item }}"
+      dest: /var/demi/uwsgi/sso-auth/
+    loop:
+      - sso-auth.yml
+      - sso-auth.py
+      - sso-auth.html
+      - sso-auth.js
+    notify: restart uwsgi
+
+  - name: copy uwsgi configuration
+    copy:
+      src: wsgi/sso-auth.yml
+      dest: /etc/uwsgi/apps-available/
+    notify: restart uwsgi
+
+  - name: enable uwsgi sso-auth app
+    file:
+      src: /etc/uwsgi/apps-available/sso-auth.yml
+      dest: /etc/uwsgi/apps-enabled/sso-auth.yml
+      state: link
+    notify: restart uwsgi
+
+  # Reload uwsgi if any of the previous tasks changed things
+  - meta: flush_handlers
+    

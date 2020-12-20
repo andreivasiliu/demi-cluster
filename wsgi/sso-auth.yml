@@ -1,0 +1,4 @@
+uwsgi:
+  plugins: python3
+  wsgi-file: /var/demi/uwsgi/sso-auth/sso-auth.py
+  callable: app

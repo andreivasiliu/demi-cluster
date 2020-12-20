@@ -1,0 +1,22 @@
+<html>
+  <head>
+    <title>demi.ro key setup</title>
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <meta name="google-signin-client_id" content="131513390980-806sq81ev4ljmicqqedlbaf1df95gjp6.apps.googleusercontent.com" />
+    <script>
+      {script}
+    </script>
+    <style type="text/css">
+      body {{background-color: black; color: gray;}}
+    </style>
+  </head>
+  <body>
+    <p>Welcome to demi.ro's key setup page!</p>
+    <p>Click the button below to sign-in via Google's single sign-on (JavaScript only, server won't see anything).
+    <div class="g-signin2" data-onsuccess="onSignIn"></div>
+    <p>Here's what Google knows about you: <span id="mydata">n/a</span></p>
+    <p>Click the button below to send this data to the server (note: the information above will be logged). If you are a demi.ro administrator, you'll get an authentication cookie in return.</p>
+    <button type="button" onclick="getCookie()">Get Cookie!</button>
+    <p>Server knows you as: <span id="knownas">n/a</span></p>
+  </body>
+</html>

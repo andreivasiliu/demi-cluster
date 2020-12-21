@@ -1,0 +1,60 @@
+- hosts: demis
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: install ttyd
+    get_url:
+      url: https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.x86_64
+      dest: /usr/local/bin/ttyd
+      mode: "0755"
+
+  - name: add ttyd user
+    user:
+      name: ttyd
+      system: yes
+
+  - name: add nginx to ttyd group
+    user:
+      name: www-data
+      groups: ttyd
+      append: true
+
+  - name: add sudo for ttyd
+    copy:
+      content: "ttyd ALL=(ALL) NOPASSWD: /usr/bin/login\n"
+      dest: /etc/sudoers.d/ttyd
+
+  - name: create /var/demi/ttyd
+    file:
+      path: /var/demi/ttyd
+      state: directory
+      mode: "0750"
+      owner: ttyd
+      group: ttyd
+
+  - name: create ttyd service
+    copy:
+      content: |
+        [Unit]
+        Description=ttyd web shell for {{item}}
+        After=network.target
+        StartLimitIntervalSec=0
+
+        [Service]
+        Type=simple
+        Restart=always
+        RestartSec=1
+        User=ttyd
+        ExecStart=/usr/local/bin/ttyd --interface /var/demi/ttyd/{{item}}.sock sudo /usr/bin/login -f {{item}}
+
+        [Install]
+        WantedBy=multi-user.target
+      dest: "/etc/systemd/system/ttyd.{{item}}.service"
+    loop: "{{ demi_users.split(',') | difference(['ansible']) }}"
+    
+  - name: start ttyd services
+    service:
+      name: "ttyd.{{item}}"
+      state: started
+    loop: "{{ demi_users.split(',') | difference(['ansible']) }}"

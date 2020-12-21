@@ -59,6 +59,7 @@
       src: site.443.conf
       dest: /etc/nginx/sites-available/site.443.conf
     notify: reload nginx
+    tags: site
       
   - name: enable server config
     file:

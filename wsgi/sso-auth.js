@@ -26,7 +26,8 @@ function getCookie() {
             p.textContent = "unknown! Go away."
         } else {
             p.textContent = words[0] + ". Cookie retrieved!";
-            document.cookie = "auth_key=" + xhr.responseText;
+            document.cookie = `auth_key=${xhr.responseText}`;
+	    document.cookie = `auth_user=${words[0]}`;
         }
     };
     xhr.send('id_token=' + id_token);

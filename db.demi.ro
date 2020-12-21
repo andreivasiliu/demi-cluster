@@ -15,6 +15,7 @@ www	IN	CNAME	demi.ro.
 key	IN	CNAME	demi.ro.
 nas	IN	CNAME	demi.ro.
 books	IN	CNAME 	demi.ro.
+term	IN	CNAME	demi.ro.
 {% for host in groups.all %}
 {{ host }}	IN	AAAA	{{ hostvars[host].ansible_default_ipv6.address }}
 {% endfor %}

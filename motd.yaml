@@ -1,0 +1,50 @@
+- hosts: all
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: install figlet/lolcat
+    package:
+      name: [figlet, lolcat]
+      state: present
+    
+  - name: create motd banner
+    copy:
+      content: |
+        #!/bin/sh
+        figlet -f small Welcome to demi.ro | /usr/games/lolcat --seed 1 --force
+      dest: /etc/update-motd.d/20-welcome-to-demi
+      mode: "0755"
+
+  - name: create motd location
+    copy:
+      content: |
+        #!/bin/bash
+
+        echo -n "You are here:"
+
+        for host in metal1 metal2 demi1 demi2; do
+            current=$(hostname)
+            if [[ "$host" == "$current" && "$host" == metal* ]]; then
+                echo -n -e " \e[1;37m[\e[1;31m$host\e[1;37m]\e[1;30m"
+            elif [[ "$host" == "$current" && "$host" == demi* ]]; then
+                echo -n -e " \e[1;37m[\e[1;32m$host\e[1;37m]\e[1;30m"
+            else
+                echo -n -e " \e[1;30m[$host]\e[0m"
+            fi
+        done
+
+        echo
+      dest: /etc/update-motd.d/30-you-are-here
+      mode: "0755"
+
+  # See: https://github.com/lavabit/robox/blob/master/scripts/debian10/motd.sh
+  - name: revert vagrant motd changes
+    lineinfile:
+      path: "/etc/pam.d/{{ item }}"
+      line: "\\1 motd=/run/motd.dynamic"
+      backrefs: yes
+      regexp: "^(.*pam_motd\\.so *) motd=/"
+    loop:
+      - login
+      - sshd

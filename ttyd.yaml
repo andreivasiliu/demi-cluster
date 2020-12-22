@@ -46,7 +46,7 @@
         Restart=always
         RestartSec=1
         User=ttyd
-        ExecStart=/usr/local/bin/ttyd --interface /var/demi/ttyd/{{item}}.sock sudo /usr/bin/login -f {{item}}
+        ExecStart=/usr/local/bin/ttyd --interface /var/demi/ttyd/{{item}}.sock -s SIGKILL timeout 30d sudo /usr/bin/login -f {{item}}
 
         [Install]
         WantedBy=multi-user.target

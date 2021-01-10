@@ -1,9 +1,17 @@
 {% extends "frame.html.j2" %}{% block main %}{% filter markdown %}
 
-Welcome to demi.ro! This is a personal server cluster, built in order to learn how to make an ansible-constructed load-balanced always-on self-hosted mini-cloud.
+Welcome to demi.ro! This is a personal server cluster, built in order to
+learn how to make an ansible-constructed load-balanced always-on self-hosted
+mini-cloud.
 
-This page is served by: `{{ inventory_hostname }}`. Shift-refresh to see it change.
+This page is served by: `{{ inventory_hostname }}`. Shift-refresh to see it
+change.
 
-What's special about it is that every week, one of the cluster's servers automatically goes down and is reconstructed from scratch in a brand new virtual machine, to prove the concept of configuration-as-code and infrastructure-as-code through ansible and vagrant. Currently this page is just a test, and the "automatic" part is manually triggered. But so far everything has been set up via ansible; see more on the [about](/about.html) page.
+What's special about it is that every week, one of the cluster's servers
+automatically goes down and is reconstructed from scratch in a brand new virtual
+machine, to prove the concept of configuration-as-code and
+infrastructure-as-code through ansible and vagrant. Currently this page is just
+a test, and the "automatic" part is manually triggered. But so far everything
+has been set up via ansible; see more on the [about](/about.html) page.
 
 {% endfilter %}{% endblock %}

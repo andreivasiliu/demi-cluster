@@ -31,7 +31,7 @@
   - name: get public IPv4
     ipify_facts:
     run_once: yes
-    
+
   - name: copy zone config
     template:
       dest: /etc/bind/db.demi.ro
@@ -39,9 +39,9 @@
     notify: reload dns
 
   - name: create challenge files
-    file:
-      path: "/etc/bind/cert_txt.{{ item }}.include"
-      state: touch
+    command:
+      cmd: "touch /etc/bind/cert_txt.{{ item }}.include"
+      creates: "/etc/bind/cert_txt.{{ item }}.include"
     loop: "{{ groups.demis }}"
 
   - meta: flush_handlers

@@ -13,6 +13,12 @@
       append: yes
     loop: "{{ demi_users.split(',') }}"
     tags: users
+
+  - name: set sudoers
+    copy:
+      content: |
+        %sudo   ALL=(ALL:ALL) NOPASSWD: ALL
+      dest: /etc/sudoers.d/sudo_nopwd
       
   - name: set authorized_key
     authorized_key:
@@ -41,6 +47,13 @@
       
   - name: set authorized_key
     authorized_key:
+      user: costel
+      key: "{{item}}"
+    loop:
+      - "{{ lookup('file', 'ssh_keys/key.costel@edv.pub') }}"
+
+  - name: set authorized_key
+    authorized_key:
       user: ansible
       key: "{{item}}"
     loop:
@@ -52,3 +65,4 @@
       - "{{ lookup('file', 'ssh_keys/key.lemon@whatever.pub') }}"
       - "{{ lookup('file', 'ssh_keys/key.char@metal1.pub') }}"
       - "{{ lookup('file', 'ssh_keys/key.char@localhost.pub') }}"
+      - "{{ lookup('file', 'ssh_keys/key.costel@edv.pub') }}"

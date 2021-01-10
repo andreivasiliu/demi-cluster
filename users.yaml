@@ -23,46 +23,46 @@
   - name: set authorized_key
     authorized_key:
       user: char
-      key: "{{item}}"
+      key: "{{ lookup('file', 'ssh_keys/' + item) }}"
     loop:
-      - "{{ lookup('file', 'ssh_keys/key.char@metal1.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.char@localhost.pub') }}"
+      - key.char@metal1.pub
+      - key.char@localhost.pub
       
   - name: set authorized_key
     authorized_key:
       user: andrei
-      key: "{{item}}"
+      key: "{{ lookup('file', 'ssh_keys/' + item) }}"
     loop:
-      - "{{ lookup('file', 'ssh_keys/key.andrei@metal1.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.andrei@ANDREI-W10.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.andrei@DESKTOP-02LV2TV.pub') }}"
+      - key.andrei@metal1.pub
+      - key.andrei@ANDREI-W10.pub
+      - key.andrei@DESKTOP-02LV2TV.pub
       
   - name: set authorized_key
     authorized_key:
       user: lemon
-      key: "{{item}}"
+      key: "{{ lookup('file', 'ssh_keys/' + item) }}"
     loop:
-      - "{{ lookup('file', 'ssh_keys/key.lemon@metal1.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.lemon@whatever.pub') }}"
+      - key.lemon@metal1.pub
+      - key.lemon@whatever.pub
       
   - name: set authorized_key
     authorized_key:
       user: costel
-      key: "{{item}}"
+      key: "{{ lookup('file', 'ssh_keys/' + item) }}"
     loop:
-      - "{{ lookup('file', 'ssh_keys/key.costel@edv.pub') }}"
+      - key.costel@edv.pub
 
   - name: set authorized_key
     authorized_key:
       user: ansible
-      key: "{{item}}"
+      key: "{{ lookup('file', 'ssh_keys/' + item) }}"
     loop:
-      - "{{ lookup('file', 'ssh_keys/key.ansible@metal1.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.andrei@metal1.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.andrei@ANDREI-W10.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.andrei@DESKTOP-02LV2TV.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.lemon@metal1.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.lemon@whatever.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.char@metal1.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.char@localhost.pub') }}"
-      - "{{ lookup('file', 'ssh_keys/key.costel@edv.pub') }}"
+      - key.ansible@metal1.pub
+      - key.andrei@metal1.pub
+      - key.andrei@ANDREI-W10.pub
+      - key.andrei@DESKTOP-02LV2TV.pub
+      - key.lemon@metal1.pub
+      - key.lemon@whatever.pub
+      - key.char@metal1.pub
+      - key.char@localhost.pub
+      - key.costel@edv.pub

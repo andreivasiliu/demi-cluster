@@ -1,3 +1,4 @@
 /.*
 /ssh_certs
 /keys
+__pycache__

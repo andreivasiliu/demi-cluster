@@ -1,0 +1,39 @@
+{% extends "frame.html.j2" %}{% block main %}{% filter markdown %}
+
+Demi is the name of this cluster and its servers. Wondering what it means? Demi is the main character
+of [Cloudbuilt](http://www.cloudbuiltgame.com/), a parkour game in a dreamt-up cloudscape. This server cluster
+is made up of two boxes, and each box is split into two OSes. With the half and half nature of this cluster,
+Demi sounds like a super-appropriate name! Also check out its [amazing soundtrack](https://jacoblincke.bandcamp.com/album/super-cloudbuilt), with its killer amalgamation of all the album's leitmotifs, appropriately named [Monolith](https://jacoblincke.bandcamp.com/track/monolith-3); I was listening to it while [dreaming up](https://gist.github.com/andreivasiliu/5a03e1d2fb0d8292ff2554186b8fc09b) this cluster.
+
+Also, that banner up there? It's also the cluster's motd that is shown on ssh login, and I liked it so much that I repurposed it to html as well. It's made with this: `figlet -f small Welcome to demi.ro | lolcat --seed 25 --force | ansi2html`. The commands are all available in Debian's repos.
+
+So, stuff that is already done and working via ansible:
+* Initial provisioning of the base system  (users, permissions, keys, etc)
+* ~~Host-by-host execution, taking out a host from the LB (OpenWrt router) before working on it~~ (broken by the Cluster Party rewrite)
+* VM creation and network setup via vagrant
+* VM's user/keys/routing/ipv6 setup
+* Host SSH certificate for rotating VMs on the same IP
+* DNS setup, with auto-detection of external IPv4 and local IPv6 addresses via ansible delegation
+* ~~Vaulted and encrypted token to update demi-ns.dynv6.net~~ (broken by the Cluster Party rewrite)
+* Let's Encrypt account creation and certification with a challenge workflow that works across hosts
+* Nginx with new certificate and the site's webfiles
+* Web content generated via ansible's Jinja templates and a custom markdown plugin
+* Reverse proxy to my NAS through nginx
+* SingleSignOn-based key setup for NAS access, through an nginx-fronted uwsgi+flask server
+
+And finally to tie it all up, a playbook that can also destroy everything, and run everything above; it takes
+around 1 minute to run from start to end, and about 10 seconds to run it again just to modify things.
+
+There's also some really cool invariants for all the above steps:
+
+* Private keys never leave the host they are on, even when signing keys for other hosts
+* As a result of the above, any private keys the VM has are ephemeral, and useless once recreated
+* The playbooks themselves contain no passwords, keys or secrets, unless encrypted in a vault
+* The VM has no way to log in to its host, and never sees letsencrypt/ssh certificate keys
+
+I aim to achieve real security, in that there's no way I know of to break into either server even with full
+knowledge of the setup. However, the goal is to assume that vulnerabilities will exist, and can be used to
+gain root access to a server, so all internet-facing services are on the VM, and if anyone does get access to
+it, the whole VM will be regularly destroyed and recreated anyway, with all packages brougth up to date.
+
+{% endfilter %}{% endblock %}

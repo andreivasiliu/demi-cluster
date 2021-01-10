@@ -1,0 +1,3 @@
+[submodule "ssh_keys"]
+	path = ssh_keys
+	url = https://github.com/andreivasiliu/demi-cluster-keys

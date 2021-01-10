@@ -16,19 +16,17 @@ key	IN	CNAME	demi.ro.
 nas	IN	CNAME	demi.ro.
 books	IN	CNAME 	demi.ro.
 term	IN	CNAME	demi.ro.
-{% for host in groups.all %}
-{{ host }}	IN	AAAA	{{ hostvars[host].ansible_default_ipv6.address }}
+{% for h in groups.all %}
+{{ h }}	IN	AAAA	{{ hostvars[h].ansible_default_ipv6.address }}
 {% endfor %}
 
 
 ; Include files with TXT records for certificate challenge data.
 ; These are created empty, but might be filled later when a challenge is needed.
 
-{% for host in groups.demis %}
-$INCLUDE /etc/bind/cert_txt.{{ host }}.include
-{% endfor %}
+$INCLUDE /etc/bind/cert_txt.include
 
 ; Allow emails from "*@demi.ro" to be sent from any IPv6 address on this network
 ; Note: SMTP on IPv4 is blocked by the ISP, which is most likely a good idea
 {% set ipv6_network = ansible_default_ipv6.address | ipsubnet(64, 0) %}
-@               IN      TXT	"v=spf1 ip6:{{ ipv6_network }} a -all"
+@	IN	TXT	"v=spf1 ip6:{{ ipv6_network }} a -all"

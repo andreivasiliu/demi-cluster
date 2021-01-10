@@ -40,8 +40,8 @@
 
   - name: create challenge files
     command:
-      cmd: "touch /etc/bind/cert_txt.{{ item }}.include"
-      creates: "/etc/bind/cert_txt.{{ item }}.include"
-    loop: "{{ groups.demis }}"
+      cmd: "touch /etc/bind/cert_txt.include"
+      creates: "/etc/bind/cert_txt.include"
+    # loop: "{{ groups.demis }}"
 
   - meta: flush_handlers

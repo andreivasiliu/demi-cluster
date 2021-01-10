@@ -6,7 +6,7 @@
   - name: reload dns
     service:
       name: bind9
-      state: reloaded
+      state: restarted
   
   tasks:
   - name: purge certificates
@@ -70,16 +70,22 @@
     
   - name: prepare challenge response
     copy:
-      dest: /etc/bind/cert_txt.{{ item }}.include
+      dest: /etc/bind/cert_txt.include
       content: |
-        {% for challenge in hostvars[item].demi_ro_challenge.challenge_data.values() %}
+        {% for challenge in demi_ro_challenge.challenge_data.values() %}
         {{ challenge['dns-01'].record }}. IN TXT {{ challenge['dns-01'].resource_value }}
         {% endfor %}
     when: demi_ro_challenge is changed
     notify: reload dns
+    delegate_to: "{{ item }}"
     loop: "{{ groups.demis }}"
 
   - meta: flush_handlers
+
+  - name: wait for TTL to expire
+    pause:
+      seconds: 60
+    when: demi_ro_challenge is changed
     
   - name: validate challenge
     acme_certificate:

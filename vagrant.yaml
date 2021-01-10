@@ -1,0 +1,42 @@
+- hosts: demis
+  become: yes
+  gather_facts: no
+
+  tasks:
+  - name: install ansible, libvirt, vagrant
+    package:
+      name:
+        - ansible
+        - libvirt-daemon-system
+        - vagrant
+        - vagrant-libvirt
+      state: present
+    delegate_to: "{{ my_metal }}"
+      
+  - name: create /var/demi/vagrant
+    file:
+      path: /var/demi/vagrant
+      state: directory
+      mode: "0755"
+    delegate_to: "{{ my_metal }}"
+
+  - name: upload Vagrantfile
+    template:
+      src: Vagrantfile.j2
+      dest: /var/demi/vagrant/Vagrantfile
+    delegate_to: "{{ my_metal }}"
+
+  - name: vagrant up
+    command:
+      cmd: "vagrant up"
+      chdir: /var/demi/vagrant
+    register: vagrant
+    changed_when: "(inventory_hostname + ': Machine already provisioned.') not in vagrant.stdout"
+    delegate_to: "{{ my_metal }}"
+
+  - name: wait for port 22 on demi
+    wait_for:
+      host: "{{ inventory_hostname }}"
+      port: 22
+    loop: "{{ groups.metals }}"
+    delegate_to: "{{ item }}"

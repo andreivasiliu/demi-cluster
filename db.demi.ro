@@ -28,5 +28,5 @@ $INCLUDE /etc/bind/cert_txt.include
 
 ; Allow emails from "*@demi.ro" to be sent from any IPv6 address on this network
 ; Note: SMTP on IPv4 is blocked by the ISP, which is most likely a good idea
-{% set ipv6_network = ansible_default_ipv6.address | ipsubnet(64, 0) %}
+{% set ipv6_network = ansible_default_ipv6.address | ipsubnet(56, 0) %}
 @	IN	TXT	"v=spf1 ip6:{{ ipv6_network }} a -all"

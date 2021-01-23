@@ -1,0 +1,39 @@
+#!/usr/bin/lua
+
+query_string = os.getenv("QUERY_STRING")
+
+function return_400(text)
+    print("Status: 401 Bad request")
+    print()
+    print("Invalid request: " .. text)
+end
+
+function return_200(text)
+    print("Status: 200 OK")
+    print()
+    print(text)
+end
+
+for action, target in string.gfind(query_string, "(%a+)=([%d\.]+)") do
+    if target ~= "192.168.16.21" and target ~= "192.168.16.22" then
+        return_400("Target unknown.")
+        return
+    end
+
+    if action == "add" then
+        os.execute("touch /etc/lb-targets/" .. target)
+        action_made = "added"
+    elseif action == "remove" then
+        os.execute("rm /etc/lb-targets/" .. target)
+        action_made = "removed"
+    else
+        return_400("Action '" .. action .. "' not valid, must be one of 'add' or 'remove'")
+        return
+    end
+
+    success = os.execute("sh /etc/firewall.user")
+    reloaded = success and "successfully" or "unsuccessfully"
+    return_200("Target " .. target .. " " .. action_made .. ". Firewall reloaded " .. reloaded .. ".")
+    return
+end
+

@@ -1,0 +1,11 @@
+- hosts: demis
+  gather_facts: no
+
+  tasks:
+  - name: Add to loadbalancer
+    uri:
+      url: "http://openwrt-9-demi/cgi-bin/loadbalancer?add={{ demi_ip }}"
+      return_content: yes
+    register: lb_result
+    failed_when: "'Firewall reloaded successfully' not in lb_result.content"
+    delegate_to: "{{ my_metal }}"

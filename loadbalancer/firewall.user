@@ -1,0 +1,60 @@
+# This file is interpreted as shell script.
+# Put your custom iptables rules here, they will
+# be executed with each firewall (re-)start.
+
+# Internal uci firewall chains are flushed and recreated on reload, so
+# put custom rules into the root chains e.g. INPUT or FORWARD or into the
+# special user chains, e.g. input_wan_rule or postrouting_lan_rule.
+
+### Demi LB ###
+
+iptables -t nat -N demi_cluster 2> /dev/null || true
+iptables -t nat -F demi_cluster
+
+total_targets=$(ls /etc/lb-targets | wc -l)
+
+for ip in $(ls /etc/lb-targets); do
+    permille=$((1000/total_targets))
+    total_targets=$((total_targets-1))
+
+    if [ "$permille" == "1000" ]; then
+        iptables -t nat -A demi_cluster -m conntrack --ctstate NEW -m comment --comment "demicore rr" -j DNAT --to-destination $ip
+    else
+        iptables -t nat -A demi_cluster -m conntrack --ctstate NEW -m comment --comment "demicore rr" -m statistic --mode random --probability "0.$permille" -j DNAT --to-destination $ip
+    fi
+done
+
+### Demi-Kube LB ###
+
+iptables -t nat -N demikube_cluster 2> /dev/null || true
+iptables -t nat -F demikube_cluster
+
+total_targets=$(ls /etc/lbkube-targets | wc -l)
+
+for ip in $(ls /etc/lbkube-targets); do
+    permille=$((1000/total_targets))
+    total_targets=$((total_targets-1))
+
+    if [ "$permille" == "1000" ]; then
+        iptables -t nat -A demikube_cluster -m conntrack --ctstate NEW -m comment --comment "demikube rr" -j DNAT --to-destination $ip
+    else
+        iptables -t nat -A demikube_cluster -m conntrack --ctstate NEW -m comment --comment "demikube rr" -m statistic --mode random --probability "0.$permille" -j DNAT --to-destination $ip
+    fi
+done
+
+iptables -t nat -F prerouting_rule
+
+iptables -t nat -A prerouting_rule -p tcp -m tcp -d 192.168.16.20 --dport 80 -m comment --comment "demicore cluster" -j demi_cluster
+iptables -t nat -A prerouting_rule -p tcp -m tcp -d 192.168.16.20 --dport 443 -m comment --comment "demicore cluster" -j demi_cluster
+iptables -t nat -A prerouting_rule -p tcp -m tcp -d 192.168.16.20 --dport 53 -m comment --comment "demicore cluster" -j demi_cluster
+iptables -t nat -A prerouting_rule -p udp -m udp -d 192.168.16.20 --dport 53 -m comment --comment "demicore cluster" -j demi_cluster
+iptables -t nat -A prerouting_rule -p tcp -m tcp -d 192.168.16.20 --dport 2379 -m comment --comment "demicore cluster" -j demi_cluster
+
+iptables -t nat -A prerouting_rule -p tcp -m tcp -d 192.168.16.40 --dport 5000 -m comment --comment "demikube cluster" -j demikube_cluster
+iptables -t nat -A prerouting_rule -p tcp -m tcp -d 192.168.16.40 --dport 6443 -m comment --comment "demikube cluster" -j demikube_cluster
+
+iptables -t nat -F postrouting_rule
+iptables -t nat -A postrouting_rule -p tcp -m tcp -s 192.168.16.0/24 -d 192.168.16.21 -m comment --comment "demi masq" -j MASQUERADE     
+iptables -t nat -A postrouting_rule -p tcp -m tcp -s 192.168.16.0/24 -d 192.168.16.22 -m comment --comment "demi masq" -j MASQUERADE
+iptables -t nat -A postrouting_rule -p tcp -m tcp -s 192.168.16.0/24 -d 192.168.16.41 -m comment --comment "demi masq" -j MASQUERADE     
+iptables -t nat -A postrouting_rule -p tcp -m tcp -s 192.168.16.0/24 -d 192.168.16.42 -m comment --comment "demi masq" -j MASQUERADE

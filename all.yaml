@@ -1,0 +1,13 @@
+- import_playbook: lb_remove.yaml
+- import_playbook: vagrant_down.yaml
+  tags: [never, destroy-vm]
+- import_playbook: vagrant_up.yaml
+- import_playbook: host_ssh.yaml
+- import_playbook: motd.yaml
+- import_playbook: users.yaml
+- import_playbook: dns.yaml
+- import_playbook: acme.yaml
+- import_playbook: nginx.yaml
+- import_playbook: uwsgi.yaml
+- import_playbook: ttyd.yaml
+- import_playbook: lb_add.yaml

@@ -6,7 +6,7 @@
   - name: restart nginx
     service:
       name: nginx
-      state: restart
+      state: restarted
 
   tasks:
   - name: install ttyd

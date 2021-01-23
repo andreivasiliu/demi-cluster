@@ -1,0 +1,10 @@
+- hosts: demis
+  become: yes
+  gather_facts: no
+
+  tasks:
+  - name: vagrant down
+    command:
+      cmd: "vagrant destroy -f"
+      chdir: /var/demi/vagrant
+    delegate_to: "{{ my_metal }}"

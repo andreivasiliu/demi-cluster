@@ -1,0 +1,66 @@
+- hosts: demis
+  gather_facts: no
+  become: true
+
+  tasks:
+  - name: gather network facts
+    setup:
+      gather_subset: "network"
+    delegate_to: "{{ item }}"
+    delegate_facts: yes
+    loop: "{{ groups.all }}"
+
+  - name: install dns
+    package: 
+      name: bind9
+      state: present
+      
+  - name: install ansible
+    package: 
+      name: ansible
+      state: present
+      
+  - name: copy named config
+    copy:
+      content: |
+        zone "demi.ro" {
+            type master;
+            file "/etc/bind/db.demi.ro";
+        };
+      dest: /etc/bind/named.conf.local
+
+  - name: create challenge files
+    command:
+      cmd: "touch /etc/bind/cert_txt.include"
+      creates: "/etc/bind/cert_txt.include"
+
+  - name: create /var/demi/dyn-ns
+    file:
+      name: /var/demi/dyn-dns
+      state: directory
+      
+  - name: copy zone config template
+    template:
+      dest: /var/demi/dyn-dns/db.demi.ro.j2
+      src: db.demi.ro.j2.j2
+
+  - name: copy ansible file
+    template:
+      dest: /var/demi/dyn-dns/refresh_dns.yaml
+      src: refresh_dns.yaml.j2
+
+  - name: add MAILTO to cron
+    cron:
+      cron_file: "update_ipv6_prefix"
+      user: root
+      name: MAILTO
+      env: yes
+      job: ""
+
+  - name: install dyn dns cron
+    cron:
+      name: "update ipv6 prefix"
+      cron_file: "update_ipv6_prefix"
+      minute: "*"
+      user: root
+      job: "ansible-playbook /var/demi/dyn-dns/refresh_dns.yaml"

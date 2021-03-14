@@ -1,0 +1,33 @@
+# Note: This is meant to be executed on a demi host after it is instantiated on
+# a metal host.
+
+- hosts: localhost
+  gather_facts: no
+  become: true
+
+  handlers:
+  - name: reload dns
+    service:
+      name: bind9
+      state: reloaded
+
+  tasks:
+  - name: gather network facts
+    setup:
+      gather_subset: "network"
+
+  - name: get public IPv4 address
+    uri:
+      url: "http://192.168.15.1/cgi-bin/public-ip"
+      return_content: yes
+    register: ipv4_result
+
+  - name: set IPv4 variable
+    set_fact:
+      public_ipv4_address: "{{ "{{ ipv4_result.content.strip() }}" }}"
+
+  - name: copy zone config
+    template:
+      dest: /etc/bind/db.demi.ro
+      src: db.demi.ro.j2
+    notify: reload dns

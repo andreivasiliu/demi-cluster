@@ -25,8 +25,8 @@ So, stuff that is already done and working via ansible:
 * Host SSH certificate for rotating VMs on the same IP
 * DNS setup, with auto-detection of external IPv4 and local IPv6 addresses via
   ansible delegation
-* ~~Vaulted and encrypted token to update demi-ns.dynv6.net~~ (broken by the
-  Cluster Party rewrite)
+* Cron jobs that automatically update the IPv6 network prefix of demi.ro records
+  and the public IPv4 A address of demi-ns.dynv6.net
 * Let's Encrypt account creation and certification with a challenge workflow
   that works across hosts
 * Nginx with new certificate and the site's webfiles

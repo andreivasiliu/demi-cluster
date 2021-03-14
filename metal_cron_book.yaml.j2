@@ -1,0 +1,29 @@
+- hosts: localhost
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: get public IPv4 address
+    uri:
+      url: "http://192.168.15.1/cgi-bin/public-ip"
+      return_content: yes
+    register: ipv4_result
+
+  - name: set IPv4 variable
+    set_fact:
+      public_ipv4_address: "{{ "{{ ipv4_result.content.strip() }}" }}"
+
+  - name: save IPv4 address
+    copy:
+      content: "{{ "{{ public_ipv4_address }}" }}"
+      dest: "/var/demi/last_ipv4_address"
+    register: last_ipv4_address
+
+  - name: update addresses of demi-ns.dynv6.net
+    uri:
+      url: "https://dynv6.com/api/update?zone=demi-ns.dynv6.net&token={{ dynv6_token }}&ipv4={{ '{{ public_ipv4_address }}' }}"
+      return_content: yes
+    when: last_ipv4_address.changed
+    register: dynv6response
+    failed_when: "'addresses updated' not in dynv6response.content"
+

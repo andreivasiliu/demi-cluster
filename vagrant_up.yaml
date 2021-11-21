@@ -3,15 +3,20 @@
   gather_facts: no
 
   tasks:
-  - name: install ansible, libvirt, vagrant
-    package:
-      name:
-        - ansible
-        - libvirt-daemon-system
-        - vagrant
-        - vagrant-libvirt
-      state: present
+  - name: gather metal facts
+    setup:
     delegate_to: "{{ my_metal }}"
+    delegate_facts: yes
+
+  # - name: install ansible, libvirt, vagrant
+  #   package:
+  #     name:
+  #       - ansible
+  #       - libvirt-daemon-system
+  #       - vagrant
+  #       - vagrant-libvirt
+  #     state: present
+  #   delegate_to: "{{ my_metal }}"
       
   - name: create /var/demi/vagrant
     file:

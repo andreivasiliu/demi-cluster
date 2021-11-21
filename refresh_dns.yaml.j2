@@ -9,7 +9,7 @@
   - name: reload dns
     service:
       name: bind9
-      state: reloaded
+      state: restarted
 
   tasks:
   - name: gather network facts

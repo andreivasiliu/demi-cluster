@@ -6,10 +6,10 @@ $TTL	60
 			     60		; Expire
 			     60 )	; Negative Cache TTL
 ;
-@	IN	NS	ns1.demi.ro.
+@	IN	NS	demi-ns.dynv6.net.
 @	IN	A	{{"{{ public_ipv4_address }}"}}
 
-ns1	IN	A	demi-ns.dynv6.net.
+ns1	IN	A	{{"{{ public_ipv4_address }}"}}
 
 www	IN	CNAME	demi.ro.
 key	IN	CNAME	demi.ro.
@@ -19,7 +19,11 @@ term	IN	CNAME	demi.ro.
 
 {{ "{% set ipv6_prefix = ansible_default_ipv6.address | ipsubnet(64, 0) | replace('::/64', '') %}" }}
 {% for h in groups.all | sort %}
+{% if 'address' in hostvars[h].ansible_default_ipv6 %}
 {{ h }}	IN	AAAA	{{ "{{ ipv6_prefix }}:" }}{{ hostvars[h].ansible_default_ipv6.address | get_ipv6_suffix }}
+{% else %}
+; {{ h }} - IPv6 not available
+{% endif %}
 {% endfor %}
 
 
@@ -30,5 +34,9 @@ $INCLUDE /etc/bind/cert_txt.include
 
 ; Allow emails from "*@demi.ro" to be sent from any IPv6 address on this network
 ; Note: SMTP on IPv4 is blocked by the ISP, which is most likely a good idea
+{% if 'address' in ansible_default_ipv6 %}
 {{ "{% set ipv6_network = ansible_default_ipv6.address | ipsubnet(56, 0) %}" }}
 @	IN	TXT	"v=spf1 ip6:{{ "{{ ipv6_network }}" }} a -all"
+{% else %}
+; IPv6 not available
+{% endif %}

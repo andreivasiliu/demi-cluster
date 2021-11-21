@@ -5,7 +5,7 @@
 - import_playbook: host_ssh.yaml
 - import_playbook: motd.yaml
 - import_playbook: users.yaml
-- import_playbook: dns.yaml
+- import_playbook: dyn_dns.yaml
 - import_playbook: acme.yaml
 - import_playbook: nginx.yaml
 - import_playbook: uwsgi.yaml

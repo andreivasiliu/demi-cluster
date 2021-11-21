@@ -1,3 +1,11 @@
+# tags:
+#   destroy-vm: Remake the vagrant hosts
+#   purge-lan-ssl: Remake the demi certificates
+#   purge-all: purge-ssl-certs + purge-ssl-accounts
+#   purge-ssl-certs: Remake ACME demi.ro certificates
+#   purge-ssl-accounts: Remake Let's Encrypt accounts
+#   purge-etcd: Remake etcd server and configuration
+
 - import_playbook: lb_remove.yaml
 - import_playbook: vagrant_down.yaml
   tags: [never, destroy-vm]
@@ -10,4 +18,7 @@
 - import_playbook: nginx.yaml
 - import_playbook: uwsgi.yaml
 - import_playbook: ttyd.yaml
+- import_playbook: lan_ssl_ca.yaml
+- import_playbook: lan_ssl_certs.yaml
+- import_playbook: etcd.yaml
 - import_playbook: lb_add.yaml

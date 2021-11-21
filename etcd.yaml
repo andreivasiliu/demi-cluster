@@ -1,0 +1,53 @@
+- hosts: demis
+  gather_facts: no
+  become: yes
+
+  handlers:
+  - name: systemd daemon-reload
+    systemd:
+      daemon_reload: yes
+
+  tasks:
+  - name: uninstall etcd
+    package:
+      name: etcd-server
+      state: absent
+    tags: [never, purge-etcd]
+
+  - name: remove etcd configuration
+    file:
+      path: /var/lib/etcd/default
+      state: absent
+    tags: [never, purge-etcd]
+
+  - name: create etcd override directory
+    file:
+      path: /etc/systemd/system/etcd.service.d
+      state: directory
+
+  - name: copy etcd configuration
+    copy:
+      dest: /etc/systemd/system/etcd.service.d/override.conf
+      content: |
+        [Service]
+        Environment="ETCD_INITIAL_CLUSTER=demi1=https://demi1:2380,demi2=https://demi2:2380"
+        Environment="ETCD_INITIAL_CLUSTER_STATE=new"
+        Environment="ETCD_INITIAL_ADVERTISE_PEER_URLS=https://{{ inventory_hostname }}:2380"
+        Environment="ETCD_LISTEN_PEER_URLS=https://0.0.0.0:2380"
+        Environment="ETCD_LISTEN_CLIENT_URLS=https://0.0.0.0:2379"
+        Environment="ETCD_ADVERTISE_CLIENT_URLS=https://demi1:2379,https://demi2:2379"
+        Environment="ETCD_PEER_CERT_FILE=/var/demi/ssl/ssl.lan.demi.crt"
+        Environment="ETCD_PEER_KEY_FILE=/var/demi/ssl/ssl.lan.demi.pem"
+        Environment="ETCD_PEER_TRUSTED_CA_FILE=/var/demi/ssl/ssl.metal.root_ca_bundle.crt"
+        Environment="ETCD_KEY_FILE=/var/demi/ssl/ssl.lan.demi.pem"
+        Environment="ETCD_CERT_FILE=/var/demi/ssl/ssl.lan.demi.crt"
+        Environment="ETCD_TRUSTED_CA_FILE=/var/demi/ssl/ssl.metal.root_ca_bundle.crt"
+        ExecStartPre=usermod -a -G demi-ssl etcd
+    notify: systemd daemon-reload
+
+  - meta: flush_handlers
+
+  - name: install etcd
+    package:
+      name: etcd
+      state: present

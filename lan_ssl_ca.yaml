@@ -1,0 +1,51 @@
+- hosts: metals
+  gather_facts: no
+  become: true
+
+  tasks:
+  # - name: install pyopenssl
+  #   package:
+  #     name:
+  #       - python-openssl
+  #       - python3-openssl
+  #     state: present
+      
+  - name: create /var/demi/ssl
+    file:
+      name: /var/demi/ssl
+      state: directory
+
+  - name: create metal CA key
+    openssl_privatekey:
+      path: /var/demi/ssl/ssl.metal.root_ca.pem
+
+  - name: create metal CA csr
+    openssl_csr:
+      path: /var/demi/ssl/ssl.metal.root_ca.csr
+      privatekey_path: /var/demi/ssl/ssl.metal.root_ca.pem
+      common_name: "{{ inventory_hostname }}.demi.lan"
+      basic_constraints_critical: yes
+      basic_constraints: ["CA:TRUE"]
+
+  - name: create metal CA certificate
+    openssl_certificate:
+      path: /var/demi/ssl/ssl.metal.root_ca.crt
+      csr_path: /var/demi/ssl/ssl.metal.root_ca.csr
+      privatekey_path: /var/demi/ssl/ssl.metal.root_ca.pem
+      provider: selfsigned
+
+  - name: slurp all certificates
+    slurp:
+      path: /var/demi/ssl/ssl.metal.root_ca.crt
+    loop: "{{ groups.metals }}"
+    delegate_to: "{{ item }}"
+    register: ssl_metal_ca
+
+  # demi hosts need to trust certificates issued by either of these two
+  - name: create metal CA certificate bundles
+    copy:
+      dest: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+      content: |
+        {% for item in ssl_metal_ca.results %}
+        {{ item.content | b64decode }}
+        {% endfor %}

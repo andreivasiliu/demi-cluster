@@ -1,0 +1,89 @@
+- hosts: demis
+  gather_facts: no
+  become: true
+
+  tasks:
+  - name: install pyOpenSSL
+    package:
+      name:
+        - python-openssl
+        - python3-openssl
+      state: present
+
+  - name: create /var/demi/ssl
+    file:
+      name: /var/demi/ssl
+      state: directory
+
+  - name: create demi-ssl group
+    group:
+      name: demi-ssl
+      system: yes
+
+  - name: create LAN demi key
+    openssl_privatekey:
+      path: /var/demi/ssl/ssl.lan.demi.pem
+      group: demi-ssl
+      mode: '0640'
+
+  - name: remove LAN demi csr
+    file:
+      path: /var/demi/ssl/ssl.lan.demi.csr
+      state: absent
+    tags: [never, purge-lan-ssl]
+
+  - name: get remote hostname
+    shell: hostname
+    register: remote_hostname
+
+  - name: create LAN demi csr
+    openssl_csr:
+      path: /var/demi/ssl/ssl.lan.demi.csr
+      privatekey_path: /var/demi/ssl/ssl.lan.demi.pem
+      common_name: "{{ remote_hostname.stdout.strip() }}"
+      subject_alt_name:
+        - "DNS:{{ remote_hostname.stdout.strip() }}"
+        - "DNS:{{ remote_hostname.stdout.strip() | replace('1', '-lb') | replace('2', '-lb') }}"
+
+  - name: slurp LAN demi csr
+    slurp:
+      path: /var/demi/ssl/ssl.lan.demi.csr
+    register: lan_demi_csr
+
+  - name: copy csr to metal
+    copy:
+      dest: /var/demi/ssl/ssl.lan.demi.csr
+      content: "{{ lan_demi_csr.content | b64decode }}"
+    delegate_to: "{{ my_metal }}"
+      
+  - name: create LAN demi certificate
+    openssl_certificate:
+      path: /var/demi/ssl/ssl.lan.demi.crt
+      csr_path: /var/demi/ssl/ssl.lan.demi.csr
+      ownca_path: /var/demi/ssl/ssl.metal.root_ca.crt
+      ownca_privatekey_path: /var/demi/ssl/ssl.metal.root_ca.pem
+      provider: ownca
+    delegate_to: "{{ my_metal }}"
+
+  - name: slurp LAN demi certificate
+    slurp:
+      path: /var/demi/ssl/ssl.lan.demi.crt
+    delegate_to: "{{ my_metal }}"
+    register: demi_lan_crt
+
+  - name: copy LAN demi certificate
+    copy:
+      dest: /var/demi/ssl/ssl.lan.demi.crt
+      content: "{{ demi_lan_crt.content | b64decode }}"
+
+  - name: slurp metal root CA bundle
+    slurp:
+      path: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+    delegate_to: "{{ my_metal }}"
+    register: metal_lan_ca_bundle_crt
+
+  - name: copy metal root CA bundle
+    copy:
+      dest: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+      content: "{{ metal_lan_ca_bundle_crt.content | b64decode }}"
+        

@@ -36,6 +36,7 @@
       - key.andrei@metal1.pub
       - key.andrei@ANDREI-W10.pub
       - key.andrei@DESKTOP-02LV2TV.pub
+      - key.andrei@Andrei-U20.pub
       
   - name: set authorized_key
     authorized_key:

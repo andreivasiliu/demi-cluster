@@ -1,4 +1,4 @@
-- hosts: demis
+- hosts: demis:kubes
   become: yes
   gather_facts: no
 

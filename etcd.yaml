@@ -51,3 +51,13 @@
     package:
       name: etcd
       state: present
+
+- hosts: demis:kubes
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: install etcd-client
+    package:
+      name: etcd-client
+      state: present

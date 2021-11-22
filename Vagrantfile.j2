@@ -14,6 +14,13 @@ Vagrant.configure("2") do |config|
   # boxes at https://vagrantcloud.com/search.
   config.vm.box = "generic/debian10"
 
+{% for host in groups.demis + groups.kubes %}
+  config.vm.define "{{ host }}" do |guest|
+    guest.vm.hostname = "{{ host }}"
+    guest.vm.network "public_network", mac: "{{ hostvars[host].guest_mac }}", bridge: "enp1s0", dev: "enp1s0"
+  end
+{% endfor %}
+
   config.vm.hostname = "{{ inventory_hostname }}"
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -39,8 +46,6 @@ Vagrant.configure("2") do |config|
   # Bridged networks make the machine appear as another physical device on
   # your network.
   # config.vm.network "public_network"
-
-  config.vm.network "public_network", mac: "{{ demi_mac }}", bridge: "enp1s0", dev: "enp1s0"
 
   # Share an additional folder to the guest VM. The first argument is
   # the path on the host to the actual folder. The second argument is
@@ -73,6 +78,8 @@ Vagrant.configure("2") do |config|
       echo 192.168.16.12 metal2 >> /etc/hosts
       echo 192.168.16.21 demi1 >> /etc/hosts
       echo 192.168.16.22 demi2 >> /etc/hosts
+      echo 192.168.16.31 kube1 >> /etc/hosts
+      echo 192.168.16.32 kube2 >> /etc/hosts
       echo net.ipv6.conf.all.disable_ipv6=0 > /etc/sysctl.d/enable_ipv6.conf
       sysctl -p /etc/sysctl.d/enable_ipv6.conf
       passwd --delete root

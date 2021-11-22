@@ -23,12 +23,14 @@
 
         echo -n "You are here:"
 
-        for host in metal1 metal2 demi1 demi2; do
+        for host in metal1 metal2 demi1 demi2 kube1 kube2; do
             current=$(hostname)
             if [[ "$host" == "$current" && "$host" == metal* ]]; then
-                echo -n -e " \e[1;37m[\e[1;31m$host\e[1;37m]\e[1;30m"
+                echo -n -e " \e[1;37m[\e[1;31m$host\e[1;37m]\e[0m"
             elif [[ "$host" == "$current" && "$host" == demi* ]]; then
-                echo -n -e " \e[1;37m[\e[1;32m$host\e[1;37m]\e[1;30m"
+                echo -n -e " \e[1;37m[\e[1;32m$host\e[1;37m]\e[0m"
+            elif [[ "$host" == "$current" && "$host" == kube* ]]; then
+                echo -n -e " \e[1;37m[\e[1;34m$host\e[1;37m]\e[0m"
             else
                 echo -n -e " \e[1;30m[$host]\e[0m"
             fi

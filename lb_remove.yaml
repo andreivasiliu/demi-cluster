@@ -4,7 +4,7 @@
   tasks:
   - name: Remove from loadbalancer
     uri:
-      url: "http://openwrt-9-demi/cgi-bin/loadbalancer?remove={{ demi_ip }}"
+      url: "http://openwrt-9-demi/cgi-bin/loadbalancer?remove={{ guest_ip }}"
       return_content: yes
     register: lb_result
     failed_when: "'Firewall reloaded successfully' not in lb_result.content"

@@ -1,0 +1,42 @@
+- hosts: kubes
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: create /var/demi/kubeadm
+    file:
+      path: /var/demi/kubeadm
+      state: directory
+
+  - copy:
+      dest: /var/demi/kubeadm/kubeadm-config.yaml
+      content: |
+        apiVersion: kubeadm.k8s.io/v1beta2
+        kind: ClusterConfiguration
+        kubernetesVersion: stable
+        controlPlaneEndpoint: "192.168.16.30:6433"
+        etcd:
+          external:
+            endpoints:
+            - https://demi1:2379
+            - https://demi2:2379
+            caFile: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+            certFile: /var/demi/ssl/ssl.lan.demi.crt
+            keyFile: /var/demi/ssl/ssl.lan.demi.pem
+
+  - name: add kubernetes apt key
+    apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+
+  - name: add kubernetes repository
+    apt_repository:
+      repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+
+  - name: install kubeadm/kubectl/kubelet
+    package:
+      name:
+        - kubeadm
+        - kubectl
+        - kubelet
+      state: present

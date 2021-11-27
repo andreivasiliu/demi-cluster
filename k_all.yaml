@@ -1,0 +1,14 @@
+# tags:
+#   destroy-vm: Remake the vagrant hosts
+#   purge-lan-ssl: Remake the demi certificates
+#   purge-all: purge-ssl-certs + purge-ssl-accounts
+
+- import_playbook: lb_remove.yaml
+- import_playbook: vagrant_down.yaml
+  tags: [never, destroy-vm]
+- import_playbook: vagrant_up.yaml
+- import_playbook: host_ssh.yaml
+- import_playbook: motd.yaml
+- import_playbook: users.yaml
+- import_playbook: lan_ssl_certs.yaml
+- import_playbook: lb_add.yaml

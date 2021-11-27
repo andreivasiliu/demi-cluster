@@ -29,10 +29,8 @@
     
   - name: install pyopenssl
     package:
-      name:
-        - python-openssl
-        - python3-openssl
-      state: latest
+      name: python3-openssl
+      state: present
       
   - name: create certs dir
     file:

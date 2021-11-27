@@ -5,9 +5,7 @@
   tasks:
   - name: install pyOpenSSL
     package:
-      name:
-        - python-openssl
-        - python3-openssl
+      name: python3-openssl
       state: present
 
   - name: create /var/demi/ssl

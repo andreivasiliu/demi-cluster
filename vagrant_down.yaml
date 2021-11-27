@@ -8,3 +8,9 @@
       cmd: "vagrant destroy -f {{ inventory_hostname }}"
       chdir: /var/demi/vagrant
     delegate_to: "{{ my_metal }}"
+
+  - name: vagrant box update
+    command:
+      cmd: "vagrant box update"
+      chdir: /var/demi/vagrant
+    delegate_to: "{{ my_metal }}"

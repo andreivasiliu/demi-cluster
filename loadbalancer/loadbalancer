@@ -14,17 +14,26 @@ function return_200(text)
     print(text)
 end
 
+targets = {
+    ["192.168.16.21"] = "lb-targets",
+    ["192.168.16.22"] = "lb-targets",
+    ["192.168.16.31"] = "lbkube-targets",
+    ["192.168.16.32"] = "lbkube-targets",
+}
+
 for action, target in string.gfind(query_string, "(%a+)=([%d\.]+)") do
-    if target ~= "192.168.16.21" and target ~= "192.168.16.22" then
+    if not targets[target] then
         return_400("Target unknown.")
         return
     end
 
+    lbdir = targets[target]
+
     if action == "add" then
-        os.execute("touch /etc/lb-targets/" .. target)
+        os.execute("touch /etc/" .. lbdir .. "/" .. target)
         action_made = "added"
     elseif action == "remove" then
-        os.execute("rm /etc/lb-targets/" .. target)
+        os.execute("rm /etc/" .. lbdir .. "/" .. target)
         action_made = "removed"
     else
         return_400("Action '" .. action .. "' not valid, must be one of 'add' or 'remove'")

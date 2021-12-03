@@ -61,3 +61,13 @@
     package:
       name: etcd-client
       state: present
+
+  - name: add etcdctl2 alias
+    lineinfile:
+      path: /etc/bash.bashrc
+      line: "alias etcdctl2='/usr/bin/etcdctl --endpoints https://demi1:2379,https://demi2:2379 --ca-file /var/demi/ssl/ssl.metal.root_ca_bundle.crt'"
+
+  - name: add etcdctl3 alias
+    lineinfile:
+      path: /etc/bash.bashrc
+      line: "alias etcdctl3='ETCDCTL_API=3 /usr/bin/etcdctl --endpoints=https://demi1:2379,https://demi2:2379 --cacert /var/demi/ssl/ssl.metal.root_ca_bundle.crt'"

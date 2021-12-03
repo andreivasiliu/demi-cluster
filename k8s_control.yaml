@@ -1,0 +1,215 @@
+- hosts: kubes
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: create /var/demi/k8s
+    file:
+      path: /var/demi/k8s
+      state: directory
+
+  # Download from https://www.downloadkubernetes.com/
+  # Sad, but sadly no repositories have all of these binaries in them.
+  # ..except maybe snapd, but snaps are hard to make systemd services out of.
+  - name: download k8s binaries
+    get_url:
+      url: "https://dl.k8s.io/v1.22.4/bin/linux/amd64/{{item.name}}"
+      checksum: "sha256:{{item.sha256}}"
+      dest: "/usr/local/bin/{{item.name}}"
+      mode: "0755"
+    loop:
+      # Control plane API entry point, talks to etcd
+      - name: kube-apiserver
+        sha256: 10542449e25d369d5e02e1c3f1390a38fb1e765a7cc86eacf41b9bcfebdacd60
+      # Control plane controller, embeds all the standard K8s controllers
+      - name: kube-controller-manager
+        sha256: fb392b344ab6695e84768d856b114b0186bbfa573ed4b6213100c82e05421f28
+      # Control plane controller, embeds the pod-to-node mapping controller
+      - name: kube-scheduler
+        sha256: 1401e8c0469bd7f166d2b0f5cbb0b332fe1ca96335fd40c4621cb2ad905e6f0f
+      # User CLI tool
+      - name: kubectl
+        sha256: 21f24aa723002353eba1cc2668d0be22651f9063f444fd01626dce2b6e1c568c
+      # Worker container manager, it starts/stops containers
+      - name: kubelet
+        sha256: 8d014cfe511d8c0a127b4e65ae2a6e60db592f9b1b512bb822490ea35958b10d
+      # Worker network manager, maintains iptables/routing rules
+      - name: kube-proxy
+        sha256: 6894003a6644ceef4ae1a8d18b44a520737caa9b0c13c269e723c10893172107
+
+  # Kubehead, 'cause it's the control node's user. Get it? No? Eh...
+  - name: create kubehead user
+    user:
+      name: kubehead
+      shell: /bin/bash
+      password: '*'
+      groups: demi-ssl
+      append: yes
+
+  # Note: Service account key likely needs a different CA
+  # Note: Issue is probably wrong
+  - name: create kube-apiserver service
+    copy:
+      dest: /etc/systemd/system/kube-apiserver.service
+      content: |
+        [Unit]
+        Description=Kubernetes API Server
+        Documentation=https://github.com/kubernetes/kubernetes
+
+        [Service]
+        ExecStart=/usr/local/bin/kube-apiserver \
+          --advertise-address={{ guest_ip }} \
+          --allow-privileged=true \
+          --apiserver-count=2 \
+          --authorization-mode=Node,RBAC \
+          --bind-address=0.0.0.0 \
+          --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \
+          --etcd-cafile=/var/demi/ssl/ssl.metal.root_ca_bundle.crt \
+          --etcd-certfile=/var/demi/ssl/ssl.lan.demi.crt \
+          --etcd-keyfile=/var/demi/ssl/ssl.lan.demi.pem \
+          --etcd-servers=https://demi1:2379,https://demi2:2379 \
+          --event-ttl=1h \
+          --runtime-config='api/all=true' \
+          --service-account-key-file=/var/demi/ssl/ssl.lan.demi.crt \
+          --service-account-signing-key-file=/var/demi/ssl/ssl.lan.demi.pem \
+          --service-account-issuer=https://192.168.16.30:6443 \
+          --service-cluster-ip-range=10.32.0.0/24 \
+          --service-node-port-range=30000-32767 \
+          --tls-cert-file=/var/demi/ssl/ssl.lan.demi.crt \
+          --tls-private-key-file=/var/demi/ssl/ssl.lan.demi.pem \
+          --client-ca-file=/var/demi/ssl/ssl.metal.root_ca_bundle.crt \
+          --v=2
+        Restart=on-failure
+        RestartSec=5
+        User=kubehead
+        Group=kubehead
+
+        [Install]
+        WantedBy=multi-user.target
+    # notify: [daemon-reload, reload kube-apiserver]
+
+  # Unused flags:
+  # --audit-log-maxage=30 \\
+  # --audit-log-maxbackup=3 \\
+  # --audit-log-maxsize=100 \\
+  # --audit-log-path=/var/log/audit.log \\
+  # --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml \\
+  # --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem \\
+  # --kubelet-client-certificate=/var/lib/kubernetes/kubernetes.pem \\
+  # --kubelet-client-key=/var/lib/kubernetes/kubernetes-key.pem \\
+
+  - name: create system:kube-controller-manager certificate
+    include_tasks: lan_ssl_sign.yaml
+    vars:
+      cert_cn: system:kube-controller-manager
+      cert_filename: kube_controller_manager
+      cert_orgname: system:kube-controller-manager
+
+  - name: create k8s admin certificate
+    include_tasks: lan_ssl_sign.yaml
+    vars:
+      cert_cn: admin
+      cert_filename: k8s_admin
+      cert_orgname: system:masters
+
+  - name: create kube-controller-manager kubeconfig
+    copy:
+      dest: /var/demi/k8s/kube-controller-manager.kubeconfig
+      content: |
+        # Can also be created with:
+        # kubectl config set-cluster demikube
+        #  --certificate-authority=/var/demi/ssl/ssl.metal.root_ca_bundle.crt
+        #  --server=https://{{ inventory_hostname }}:6443
+        #  --kubeconfig=kube-controller-manager.kubeconfig
+        # kubectl config set-credentials system:kube-controller-manager
+        #  --client-certificate=/var/demi/ssl/ssl.lan.demi.crt
+        #  --client-key=/var/demi/ssl/ssl.lan.demi.pem
+        #  --kubeconfig=kube-controller-manager.kubeconfig
+        # kubectl config set-context default --cluster=demikube
+        #  --user=system:kube-controller-manager
+        #  --kubeconfig=kube-controller-manager.kubeconfig
+        apiVersion: v1
+        kind: Config
+        clusters:
+        - cluster:
+            certificate-authority: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+            server: https://{{ inventory_hostname }}:6443
+          name: demikube
+        contexts:
+        - context:
+            cluster: demikube
+            user: system:kube-controller-manager
+          name: default
+        current-context: default
+        preferences: {}
+        users:
+        - name: system:kube-controller-manager
+          user:
+            client-certificate: /var/demi/ssl/ssl.kube_controller_manager.crt
+            client-key: /var/demi/ssl/ssl.kube_controller_manager.pem
+
+  # Note: Cluster signing key likely needs a different CA
+  - name: create kube-controller-manager service
+    copy:
+      dest: /etc/systemd/system/kube-controller-manager.service
+      content: |
+        [Unit]
+        Description=Kubernetes Controller Manager
+        Documentation=https://github.com/kubernetes/kubernetes
+
+        [Service]
+        ExecStart=/usr/local/bin/kube-controller-manager \
+          --bind-address=0.0.0.0 \
+          --cluster-cidr=10.200.0.0/16 \
+          --cluster-name=kubernetes \
+          --cluster-signing-cert-file=/var/demi/ssl/ssl.lan.demi.crt \
+          --cluster-signing-key-file=/var/demi/ssl/ssl.lan.demi.pem \
+          --kubeconfig=/var/demi/k8s/kube-controller-manager.kubeconfig \
+          --leader-elect=true \
+          --root-ca-file=/var/demi/ssl/ssl.metal.root_ca_bundle.crt \
+          --service-account-private-key-file=/var/demi/ssl/ssl.lan.demi.pem \
+          --service-cluster-ip-range=10.32.0.0/24 \
+          --use-service-account-credentials=true \
+          --v=2
+        Restart=on-failure
+        RestartSec=5
+        User=kubehead
+        Group=kubehead
+
+        [Install]
+        WantedBy=multi-user.target
+
+  - name: create .kube directory
+    file:
+      path: "/home/{{ item }}/.kube"
+      state: directory
+      owner: "{{ item }}"
+      group: "{{ item }}"
+    loop: "{{ demi_users.split(',') }}"
+
+  - name: create admin kubeconfig
+    copy:
+      dest: "/home/{{ item }}/.kube/config"
+      content: |
+        apiVersion: v1
+        kind: Config
+        preferences: {}
+        clusters:
+        - cluster:
+            certificate-authority: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+            server: https://{{ inventory_hostname }}:6443
+          name: demikube
+        contexts:
+        - context:
+            cluster: demikube
+            user: admin
+          name: default
+        current-context: default
+        users:
+        - name: admin
+          user:
+            client-certificate: /var/demi/ssl/ssl.k8s_admin.crt
+            client-key: /var/demi/ssl/ssl.k8s_admin.pem
+      owner: "{{ item }}"
+      group: "{{ item }}"
+    loop: "{{ demi_users.split(',') }}"

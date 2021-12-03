@@ -1,20 +1,22 @@
+# Note: abandoned for now.
+
 - hosts: kubes
   gather_facts: no
   become: yes
 
   tasks:
-  - name: create /var/demi/kubeadm
+  - name: create /var/demi/k8s
     file:
-      path: /var/demi/kubeadm
+      path: /var/demi/k8s
       state: directory
 
   - copy:
-      dest: /var/demi/kubeadm/kubeadm-config.yaml
+      dest: /var/demi/k8s/kubeadm-config.yaml
       content: |
         apiVersion: kubeadm.k8s.io/v1beta2
         kind: ClusterConfiguration
         kubernetesVersion: stable
-        controlPlaneEndpoint: "192.168.16.30:6433"
+        # controlPlaneEndpoint: "192.168.16.30:6433"
         etcd:
           external:
             endpoints:
@@ -24,10 +26,14 @@
             certFile: /var/demi/ssl/ssl.lan.demi.crt
             keyFile: /var/demi/ssl/ssl.lan.demi.pem
 
+  - name: install gpg
+    package:
+      name: gpg
+      state: present
+
   - name: add kubernetes apt key
     apt_key:
       url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-
 
   - name: add kubernetes repository
     apt_repository:

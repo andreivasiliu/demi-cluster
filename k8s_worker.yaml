@@ -1,0 +1,38 @@
+- hosts: kubes
+  gather_facts: no
+  become: yes
+
+  tasks:
+  # kubeadm refuses to start with swap.
+  - name: disable swap in fstab
+    lineinfile:
+      path: /etc/fstab
+      regexp: "^([^#].*?\\sswap\\s+sw\\s+.*)$"
+      state: absent
+    register: swap_disabled
+
+  - name: run swapoff
+    command: swapoff -a
+    when: swap_disabled is changed
+
+  # Necessary for inter-pod networking.
+  - name: enable ip_forward
+    sysctl:
+      name: net.ipv4.ip_forward
+      value: '1'
+
+  - name: enable br_netfilter
+    modprobe:
+      name: br_netfilter
+      state: present
+  
+  - name: enable br_netfilter in modules-load.d
+    lineinfile:
+      path: /etc/modules-load.d/modules.conf
+      line: br_netfilter
+
+  # Docker, except without all the docker.
+  - name: install containerd
+    package:
+      name: containerd
+      state: present

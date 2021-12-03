@@ -1,4 +1,4 @@
-- hosts: demis
+- hosts: demis:kubes
   gather_facts: no
 
   tasks:

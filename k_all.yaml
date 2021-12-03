@@ -11,4 +11,7 @@
 - import_playbook: motd.yaml
 - import_playbook: users.yaml
 - import_playbook: lan_ssl_certs.yaml
+- import_playbook: etcd.yaml
+- import_playbook: k8s_control.yaml
+- import_playbook: k8s_worker.yaml
 - import_playbook: lb_add.yaml

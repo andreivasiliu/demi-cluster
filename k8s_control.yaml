@@ -105,6 +105,13 @@
       cert_filename: kube_controller_manager
       cert_orgname: system:kube-controller-manager
 
+  - name: create system:kube-scheduler certificate
+    include_tasks: lan_ssl_sign.yaml
+    vars:
+      cert_cn: system:kube-scheduler
+      cert_filename: kube_scheduler
+      cert_orgname: system:kube-scheduler
+
   - name: create k8s admin certificate
     include_tasks: lan_ssl_sign.yaml
     vars:
@@ -130,6 +137,7 @@
         #  --kubeconfig=kube-controller-manager.kubeconfig
         apiVersion: v1
         kind: Config
+        preferences: {}
         clusters:
         - cluster:
             certificate-authority: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
@@ -141,7 +149,6 @@
             user: system:kube-controller-manager
           name: default
         current-context: default
-        preferences: {}
         users:
         - name: system:kube-controller-manager
           user:
@@ -170,6 +177,51 @@
           --service-account-private-key-file=/var/demi/ssl/ssl.lan.demi.pem \
           --service-cluster-ip-range=10.32.0.0/24 \
           --use-service-account-credentials=true \
+          --v=2
+        Restart=on-failure
+        RestartSec=5
+        User=kubehead
+        Group=kubehead
+
+        [Install]
+        WantedBy=multi-user.target
+
+  - name: create kube-scheduler kubeconfig
+    copy:
+      dest: /var/demi/k8s/kube-scheduler.kubeconfig
+      content: |
+        apiVersion: v1
+        kind: Config
+        preferences: {}
+        clusters:
+        - cluster:
+            certificate-authority: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+            server: https://{{ inventory_hostname }}:6443
+          name: demikube
+        contexts:
+        - context:
+            cluster: demikube
+            user: system:kube-scheduler
+          name: default
+        current-context: default
+        users:
+        - name: system:kube-scheduler
+          user:
+            client-certificate: /var/demi/ssl/ssl.kube_scheduler.crt
+            client-key: /var/demi/ssl/ssl.kube_scheduler.pem
+
+  - name: create kube-scheduler service
+    copy:
+      dest: /etc/systemd/system/kube-scheduler.service
+      content: |
+        [Unit]
+        Description=Kubernetes Scheduler
+        Documentation=https://github.com/kubernetes/kubernetes
+
+        [Service]
+        ExecStart=/usr/local/bin/kube-scheduler \
+          --leader-elect=true \
+          --kubeconfig=/var/demi/k8s/kube-scheduler.kubeconfig \
           --v=2
         Restart=on-failure
         RestartSec=5

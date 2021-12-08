@@ -92,6 +92,13 @@
       cert_filename: kube_proxy
       cert_orgname: system:node-proxier
 
+  - name: create worker:kube-dns certificate
+    include_tasks: lan_ssl_sign.yaml
+    vars:
+      cert_cn: "system:demikube-dns"
+      cert_filename: demikube_dns
+      cert_orgname: system:kube-dns
+
   - name: create kubelet kubeconfig
     copy:
       dest: /var/demi/k8s/kubelet.kubeconfig
@@ -194,10 +201,63 @@
         ExecStart=/usr/local/bin/kube-proxy \
           --kubeconfig=/var/demi/k8s/kube-proxy.kubeconfig \
           --proxy-mode=iptables \
-          --cluster-cidr=10.200.0.0/16
+          --cluster-cidr=10.200.0.0/16 \
+          --v=2
         Restart=on-failure
         RestartSec=5
 
         [Install]
         WantedBy=multi-user.target
 
+  - name: create demikube-dns kubeconfig
+    copy:
+      dest: /var/demi/k8s/kube-dns.kubeconfig
+      content: |
+        apiVersion: v1
+        kind: Config
+        preferences: {}
+        clusters:
+        - cluster:
+            certificate-authority: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+            server: "https://{{ inventory_hostname }}:6443"
+          name: demikube
+        contexts:
+        - context:
+            cluster: demikube
+            user: "system:demikube-dns"
+          name: default
+        current-context: default
+        users:
+        - name: "system:demikube-dns"
+          user:
+            client-certificate: /var/demi/ssl/ssl.kube_dns.crt
+            client-key: /var/demi/ssl/ssl.kube_dns.pem
+
+  - name: copy demikube-dns
+    copy:
+      dest: /var/demi/k8s/demikube_dns.py
+      src: demikube_dns.py
+      mode: "0755"
+
+  - name: install dnsmasq and k8s client
+    package:
+      name:
+        - dnsmasq
+        - python3-kubernetes
+      state: present
+
+  - name: create demikube-dns service
+    copy:
+      dest: /etc/systemd/system/demikube-dns.service
+      content: |
+        [Unit]
+        Description=Demikube DNS
+        Requires=dnsmasq.service
+
+        [Service]
+        ExecStart=/var/demi/k8s/demikube_dns.py
+        Restart=on-failure
+        RestartSec=5
+
+        [Install]
+        WantedBy=multi-user.target

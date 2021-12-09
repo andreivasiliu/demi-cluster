@@ -46,6 +46,14 @@
       groups: demi-ssl
       append: yes
 
+  # Used by kube-apiserver to connect to kubelets
+  - name: create kubernetes certificate
+    include_tasks: lan_ssl_sign.yaml
+    vars:
+      cert_cn: kubernetes
+      cert_orgname: kubernetes
+      cert_filename: kube_kubernetes
+
   # Note: Service account key likely needs a different CA
   # Note: Issue is probably wrong
   - name: create kube-apiserver service
@@ -78,6 +86,9 @@
           --tls-cert-file=/var/demi/ssl/ssl.lan.demi.crt \
           --tls-private-key-file=/var/demi/ssl/ssl.lan.demi.pem \
           --client-ca-file=/var/demi/ssl/ssl.metal.root_ca_bundle.crt \
+          --kubelet-certificate-authority=/var/demi/ssl/ssl.metal.root_ca_bundle.crt \
+          --kubelet-client-certificate=/var/demi/ssl/ssl.kube_kubernetes.crt \
+          --kubelet-client-key=/var/demi/ssl/ssl.kube_kubernetes.pem \
           --v=2
         Restart=on-failure
         RestartSec=5
@@ -94,9 +105,6 @@
   # --audit-log-maxsize=100 \\
   # --audit-log-path=/var/log/audit.log \\
   # --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml \\
-  # --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem \\
-  # --kubelet-client-certificate=/var/lib/kubernetes/kubernetes.pem \\
-  # --kubelet-client-key=/var/lib/kubernetes/kubernetes-key.pem \\
 
   - name: create system:kube-controller-manager certificate
     include_tasks: lan_ssl_sign.yaml
@@ -265,3 +273,56 @@
       owner: "{{ item }}"
       group: "{{ item }}"
     loop: "{{ demi_users.split(',') }}"
+
+  # This enables pulling logs from pods or tunneling shells to them
+  - name: create kube-apiserver to kubelet communication roles
+    copy:
+      dest: /var/demi/k8s/kubeapi_to_kubelet.yaml
+      content: |
+        ---
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          annotations:
+            rbac.authorization.kubernetes.io/autoupdate: "true"
+          labels:
+            kubernetes.io/bootstrapping: rbac-defaults
+          name: system:kube-apiserver-to-kubelet
+        rules:
+          - apiGroups:
+              - ""
+            resources:
+              - nodes/proxy
+              - nodes/stats
+              - nodes/log
+              - nodes/spec
+              - nodes/metrics
+            verbs:
+              - "*"
+
+        ---
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: system:kube-apiserver
+          namespace: ""
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: system:kube-apiserver-to-kubelet
+        subjects:
+          - apiGroup: rbac.authorization.k8s.io
+            kind: User
+            name: kubernetes
+
+  - name: apply kube-apiserver to kubelet communication roles
+    command:
+      argv:
+        - /usr/local/bin/kubectl
+        - apply
+        - --kubeconfig
+        - /home/ansible/.kube/config
+        - -f
+        - /var/demi/k8s/kubeapi_to_kubelet.yaml
+    register: kubectl_output
+    changed_when: "'created' in kubectl_output.stdout"

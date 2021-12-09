@@ -78,6 +78,13 @@
       path: /etc/modules-load.d/modules.conf
       line: br_netfilter
 
+  - name: create kubelet server certificate
+    include_tasks: lan_ssl_sign.yaml
+    vars:
+      cert_cn: "{{ inventory_hostname }}"
+      cert_filename: kube_kubelet_server
+      cert_orgname: kubernetes
+
   - name: create system:node certificate
     include_tasks: lan_ssl_sign.yaml
     vars:
@@ -138,8 +145,8 @@
         clusterDNS:
           - "10.32.0.10"
         podCIDR: "{{ pod_net }}"
-        tlsCertFile: /var/demi/ssl/ssl.kube_kubelet.crt
-        tlsPrivateKeyFile: /var/demi/ssl/ssl.kube_kubelet.pem
+        tlsCertFile: /var/demi/ssl/ssl.kube_kubelet_server.crt
+        tlsPrivateKeyFile: /var/demi/ssl/ssl.kube_kubelet_server.pem
 
   - name: create kubelet service
     copy:

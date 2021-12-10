@@ -2,6 +2,12 @@
   gather_facts: no
   become: yes
 
+  handlers:
+  - name: restart containerd
+    service:
+      name: containerd
+      state: restarted
+
   tasks:
   # Container Network Interface plugins for containerd.
   - name: install cni plugins
@@ -143,7 +149,7 @@
           mode: Webhook
         clusterDomain: "cluster.local"
         clusterDNS:
-          - "10.32.0.10"
+          - "{{ guest_ip }}"
         podCIDR: "{{ pod_net }}"
         tlsCertFile: /var/demi/ssl/ssl.kube_kubelet_server.crt
         tlsPrivateKeyFile: /var/demi/ssl/ssl.kube_kubelet_server.pem
@@ -246,6 +252,13 @@
       src: demikube_dns.py
       mode: "0755"
 
+  - name: copy dnsmasq configuration
+    copy:
+      dest: /etc/dnsmasq.d/kubernetes.conf
+      content: |
+        # Maintained by demikube-dns.service
+        addn-hosts=/etc/hosts.kubernetes
+
   - name: install dnsmasq and k8s client
     package:
       name:
@@ -268,3 +281,13 @@
 
         [Install]
         WantedBy=multi-user.target
+
+  # Insecure registry (any pod can push whatever it wants into it)
+  # Not a problem for now since no system containers are pulled from here
+  - name: add local registry
+    blockinfile:
+      dest: /etc/containerd/config.toml
+      block: |
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."rk3188.lan"]
+        endpoint = ["http://192.168.15.191:5000"]
+    notify: restart containerd

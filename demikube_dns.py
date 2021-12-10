@@ -38,7 +38,7 @@ def service_events() -> Iterator[ServiceEvent]:
 def write_hosts(hosts: Dict[Tuple[str, str], str]) -> None:
     with open('/etc/hosts.kubernetes.tmp', 'w') as f:
         for (name, namespace), ip in hosts.items():
-            if not re.match("[a-z_-]+", name) or not re.match("[a-z_-]+", namespace):
+            if not re.match("^[a-z_-]+$", name) or not re.match("^[a-z_-]+$", namespace):
                 continue
 
             names = ' '.join([

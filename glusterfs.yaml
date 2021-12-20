@@ -1,0 +1,65 @@
+- hosts: kubes
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: symlink glusterfs certificates
+    file:
+      dest: /etc/ssl/{{ item.0 }}
+      src: /var/demi/ssl/{{ item.1 }}
+      state: link
+    loop:
+      - [ glusterfs.pem, ssl.lan.demi.crt ]
+      - [ glusterfs.crt, ssl.lan.demi.pem ]
+      - [ glusterfs.ca, ssl.metal.root_ca_bundle.crt ]
+
+  - name: create persistent glusterfs directory
+    file:
+      path: /mnt/persistent/glusterd
+      state: directory
+      mode: "0750"
+
+  - name: set up persistent glusterfs directory
+    file:
+      dest: /var/lib/glusterd
+      src: /mnt/persistent/glusterd
+      state: link
+
+  - name: install glusterfs
+    package:
+      name: glusterfs-server
+      state: present
+    
+  - name: enable and start glusterd service
+    service:
+      name: glusterd
+      enabled: yes
+      state: started
+
+  - name: add gluster peer
+    gluster_peer:
+      nodes:
+        - kube1
+        - kube2
+      state: present
+
+  - name: create gluster-bricks directory
+    file:
+      path: /mnt/persistent/gluster-bricks
+      state: directory
+      mode: "0750"
+
+  - name: create default-volume directory
+    file:
+      path: /mnt/persistent/gluster-bricks/default-volume
+      state: directory
+
+  - name: add gluster volume for Kubernetes
+    gluster_volume:
+      name: default-volume
+      bricks: /mnt/persistent/gluster-bricks/default-volume
+      cluster:
+        - kube1
+        - kube2
+      state: present
+    run_once: true

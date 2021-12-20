@@ -15,4 +15,6 @@
 - import_playbook: etcd.yaml
 - import_playbook: k8s_control.yaml
 - import_playbook: k8s_worker.yaml
+- import_playbook: glusterfs.yaml
+- import_playbook: metrics.yaml
 - import_playbook: lb_add.yaml

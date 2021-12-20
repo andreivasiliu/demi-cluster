@@ -1,0 +1,22 @@
+- hosts: kubes
+  gather_facts: no
+  become: yes
+
+  handlers:
+  - name: restart prometheus-node-exporter
+    service:
+      name: prometheus-node-exporter
+      state: restarted
+
+  tasks:
+  - name: copy prometheus-node-exporter configuration
+    copy:
+      dest: /etc/default/prometheus-node-exporter
+      content: |
+        ARGS="--collector.disable-defaults --collector.cpu --collector.meminfo --collector.netdev --collector.filesystem"
+    notify: restart prometheus-node-exporter
+
+  - name: install prometheus-node-exporter
+    package:
+      name: prometheus-node-exporter
+      state: present

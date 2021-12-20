@@ -113,6 +113,9 @@ Vagrant.configure("2") do |config|
       echo 192.168.16.22 demi2 >> /etc/hosts
       echo 192.168.16.31 kube1 >> /etc/hosts
       echo 192.168.16.32 kube2 >> /etc/hosts
+      # IPv6
+      sed -i 's/^net.ipv6.conf.all.disable_ipv6 = 1/net.ipv6.conf.all.disable_ipv6 = 0/' \
+        /etc/sysctl.d/99-sysctl.conf /etc/sysctl.conf
       echo net.ipv6.conf.all.disable_ipv6=0 > /etc/sysctl.d/enable_ipv6.conf
       sysctl -p /etc/sysctl.d/enable_ipv6.conf
       # Users

@@ -18,6 +18,38 @@ Vagrant.configure("2") do |config|
   config.vm.define "{{ host }}" do |guest|
     guest.vm.hostname = "{{ host }}"
     guest.vm.network "public_network", mac: "{{ hostvars[host].guest_mac }}", bridge: "enp1s0", dev: "enp1s0"
+
+    guest.vm.provider "libvirt" do |lv, override|
+      lv.memory = "{{ 4096 if host.startswith("kube") else 2048 }}"
+
+      # Mount a persistent disk using vagrant-libvirt's config.storage
+      lv.storage :file, size: "30G",
+        path: "{{ host }}.img",
+        allow_existing: true, type: :raw
+
+      override.vm.provision "shell", inline: <<~SHELL
+        echo "/dev/vdb /mnt/persistent ext4 defaults 0 3" >> /etc/fstab
+        mkdir /mnt/persistent
+        mount /mnt/persistent
+      SHELL
+    end
+
+    guest.vm.provider "virtualbox" do |vb, override|
+      vb.memory = "{{ 4096 if host.startswith("kube") else 2048 }}"
+
+      # Mount a persistent disk using the vagrant-persistent-storage plugin
+      override.persistent_storage.enabled = true
+      override.persistent_storage.location = "/var/demi/persistent/{{host}}.vdi"
+      override.persistent_storage.size = 30 * 1024
+      override.persistent_storage.partition = false
+      override.persistent_storage.diskdevice = "/dev/sdb"
+
+      override.vm.provision "shell", inline: <<~SHELL
+        echo "/dev/sdb /mnt/persistent ext4 defaults 0 3" >> /etc/fstab
+        mkdir /mnt/persistent
+        mount /mnt/persistent
+      SHELL
+    end
   end
 {% endfor %}
 
@@ -71,8 +103,10 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<~SHELL
+      # Main route
       ip route del default
       ip route add default via 192.168.16.1 dev eth1
+      # Hosts
       echo 192.168.16.11 metal1 >> /etc/hosts
       echo 192.168.16.12 metal2 >> /etc/hosts
       echo 192.168.16.21 demi1 >> /etc/hosts
@@ -81,6 +115,7 @@ Vagrant.configure("2") do |config|
       echo 192.168.16.32 kube2 >> /etc/hosts
       echo net.ipv6.conf.all.disable_ipv6=0 > /etc/sysctl.d/enable_ipv6.conf
       sysctl -p /etc/sysctl.d/enable_ipv6.conf
+      # Users
       passwd --delete root
       passwd --delete vagrant
       useradd --create-home --user-group --shell /bin/bash ansible

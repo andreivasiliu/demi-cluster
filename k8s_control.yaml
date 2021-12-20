@@ -8,6 +8,11 @@
       path: /var/demi/k8s
       state: directory
 
+  - name: create /mnt/persistent/k8s
+    file:
+      path: /mnt/persistent/k8s
+      state: directory
+
   # Download from https://www.downloadkubernetes.com/
   # Sad, but sadly no repositories have all of these binaries in them.
   # ..except maybe snapd, but snaps are hard to make systemd services out of.
@@ -15,7 +20,7 @@
     get_url:
       url: "https://dl.k8s.io/v1.22.4/bin/linux/amd64/{{item.name}}"
       checksum: "sha256:{{item.sha256}}"
-      dest: "/usr/local/bin/{{item.name}}"
+      dest: "/mnt/persistent/k8s/{{item.name}}"
       mode: "0755"
     loop:
       # Control plane API entry point, talks to etcd
@@ -36,6 +41,20 @@
       # Worker network manager, maintains iptables/routing rules
       - name: kube-proxy
         sha256: 6894003a6644ceef4ae1a8d18b44a520737caa9b0c13c269e723c10893172107
+
+  - name: install k8s binaries
+    copy:
+      dest: "/usr/local/bin/{{item.name}}"
+      src: "/mnt/persistent/k8s/{{item.name}}"
+      remote_src: yes
+      mode: "0755"
+    loop:
+      - name: kube-apiserver
+      - name: kube-controller-manager
+      - name: kube-scheduler
+      - name: kubectl
+      - name: kubelet
+      - name: kube-proxy
 
   # Kubehead, 'cause it's the control node's user. Get it? No? Eh...
   - name: create kubehead user

@@ -11,6 +11,10 @@
 
   - name: vagrant box update
     command:
-      cmd: "vagrant box update"
+      cmd: "vagrant box update {{ inventory_hostname }}"
       chdir: /var/demi/vagrant
     delegate_to: "{{ my_metal }}"
+
+  # TODO: Changed when:
+  # kube1: Box 'generic/debian11' (v3.6.0) is running the latest version.
+  # ..not in output

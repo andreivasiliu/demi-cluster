@@ -4,8 +4,9 @@
 #   purge-all: purge-ssl-certs + purge-ssl-accounts
 
 - import_playbook: lb_remove.yaml
+  tags: [never, take-down]
 - import_playbook: vagrant_down.yaml
-  tags: [never, destroy-vm]
+  tags: [never, destroy-vm, take-down]
 - import_playbook: vagrant_up.yaml
 - import_playbook: host_ssh.yaml
 - import_playbook: motd.yaml

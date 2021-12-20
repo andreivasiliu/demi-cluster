@@ -4,7 +4,7 @@ import os
 import subprocess
 import re
 import logging
-from typing import Dict, Iterator, NamedTuple, Tuple
+from typing import Dict, Iterator, NamedTuple, Tuple, Optional
 
 import kubernetes
 
@@ -16,7 +16,7 @@ class ServiceEvent(NamedTuple):
     event: str
     service: str
     namespace: str
-    ip: str
+    ip: Optional[str]
 
 
 def service_events() -> Iterator[ServiceEvent]:
@@ -35,9 +35,12 @@ def service_events() -> Iterator[ServiceEvent]:
         )
 
 
-def write_hosts(hosts: Dict[Tuple[str, str], str]) -> None:
+def write_hosts(hosts: Dict[Tuple[str, str], Optional[str]]) -> None:
     with open('/etc/hosts.kubernetes.tmp', 'w') as f:
         for (name, namespace), ip in hosts.items():
+            if not ip or ip == "None":
+                continue
+
             if not re.match("^[a-z_-]+$", name) or not re.match("^[a-z_-]+$", namespace):
                 continue
 

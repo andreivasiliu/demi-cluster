@@ -8,7 +8,50 @@
       name: containerd
       state: restarted
 
+  - name: restart dnsmasq
+    service:
+      name: dnsmasq
+      state: restarted
+
+  - name: daemon-reload
+    systemd:
+      daemon_reload: yes
+
+  - name: restart kubelet
+    service:
+      name: kubelet
+      state: restarted
+
+  - name: restart kube-proxy
+    service:
+      name: kube-proxy
+      state: restarted
+
+  - name: restart demikube-dns
+    service:
+      name: demikube-dns
+      state: restarted
+
+  - name: run ifup eth1
+    command: env IFACE=eth1 /etc/network/if-up.d/podnet
+
   tasks:
+  # Route to the pod subnet of other kube hosts
+  - name: create pod net routes configuration
+    copy:
+      dest: /etc/network/if-up.d/podnet
+      content: |
+        #!/bin/sh -e
+        if [ "$IFACE" = "eth1" ]; then
+        {% for host in groups.kubes %}
+        {% if host != inventory_hostname %}
+            ip route add {{ hostvars[host].pod_net }} via {{ hostvars[host].guest_ip }}
+        {% endif %}
+        {% endfor %}
+        fi
+      mode: "0755"
+    notify: run ifup eth1
+
   # Container Network Interface plugins for containerd.
   - name: install cni plugins
     package:
@@ -135,6 +178,7 @@
           user:
             client-certificate: /var/demi/ssl/ssl.kube_kubelet.crt
             client-key: /var/demi/ssl/ssl.kube_kubelet.pem
+    notify: restart kubelet
 
   - name: create kubelet configuration
     copy:
@@ -153,6 +197,7 @@
         podCIDR: "{{ pod_net }}"
         tlsCertFile: /var/demi/ssl/ssl.kube_kubelet_server.crt
         tlsPrivateKeyFile: /var/demi/ssl/ssl.kube_kubelet_server.pem
+    notify: restart kubelet
 
   - name: create kubelet service
     copy:
@@ -177,6 +222,13 @@
 
         [Install]
         WantedBy=multi-user.target
+    notify: [daemon-reload, restart kubelet]
+
+  # Install iptables for kube-proxy
+  - name: install iptables
+    package:
+      name: iptables
+      state: present
 
   - name: create kube-proxy kubeconfig
     copy:
@@ -201,6 +253,7 @@
           user:
             client-certificate: /var/demi/ssl/ssl.kube_proxy.crt
             client-key: /var/demi/ssl/ssl.kube_proxy.pem
+    notify: restart kube-proxy
 
   - name: create kube-proxy service
     copy:
@@ -221,6 +274,7 @@
 
         [Install]
         WantedBy=multi-user.target
+    notify: [daemon-reload, restart kube-proxy]
 
   - name: create demikube-dns kubeconfig
     copy:
@@ -252,19 +306,20 @@
       src: demikube_dns.py
       mode: "0755"
 
-  - name: copy dnsmasq configuration
-    copy:
-      dest: /etc/dnsmasq.d/kubernetes.conf
-      content: |
-        # Maintained by demikube-dns.service
-        addn-hosts=/etc/hosts.kubernetes
-
   - name: install dnsmasq and k8s client
     package:
       name:
         - dnsmasq
         - python3-kubernetes
       state: present
+
+  - name: copy dnsmasq configuration
+    copy:
+      dest: /etc/dnsmasq.d/kubernetes.conf
+      content: |
+        # Maintained by demikube-dns.service
+        addn-hosts=/etc/hosts.kubernetes
+    notify: restart dnsmasq
 
   - name: create demikube-dns service
     copy:
@@ -281,6 +336,7 @@
 
         [Install]
         WantedBy=multi-user.target
+    notify: [daemon-reload, restart demikube-dns]
 
   # Insecure registry (any pod can push whatever it wants into it)
   # Not a problem for now since no system containers are pulled from here
@@ -291,3 +347,14 @@
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."rk3188.lan"]
         endpoint = ["http://192.168.15.191:5000"]
     notify: restart containerd
+
+  - meta: flush_handlers
+
+  - name: enable k8s worker services
+    service:
+      name: "{{ item }}"
+      enabled: yes
+    loop:
+      - kubelet
+      - kube-proxy
+      - demikube-dns

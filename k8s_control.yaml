@@ -2,6 +2,26 @@
   gather_facts: no
   become: yes
 
+  handlers:
+  - name: daemon-reload
+    systemd:
+      daemon_reload: yes
+
+  - name: restart kube-apiserver
+    service:
+      name: kube-apiserver
+      state: restarted
+
+  - name: restart kube-controller-manager
+    service:
+      name: kube-controller-manager
+      state: restarted
+
+  - name: restart kube-scheduler
+    service:
+      name: kube-scheduler
+      state: restarted
+
   tasks:
   - name: create /var/demi/k8s
     file:
@@ -41,6 +61,7 @@
       # Worker network manager, maintains iptables/routing rules
       - name: kube-proxy
         sha256: 6894003a6644ceef4ae1a8d18b44a520737caa9b0c13c269e723c10893172107
+    notify: restart kube-apiserver
 
   - name: install k8s binaries
     copy:
@@ -64,6 +85,7 @@
       password: '*'
       groups: demi-ssl
       append: yes
+    notify: restart kube-apiserver
 
   # Used by kube-apiserver to connect to kubelets
   - name: create kubernetes certificate
@@ -116,7 +138,7 @@
 
         [Install]
         WantedBy=multi-user.target
-    # notify: [daemon-reload, reload kube-apiserver]
+    notify: [daemon-reload, restart kube-apiserver]
 
   # Unused flags:
   # --audit-log-maxage=30 \\
@@ -181,6 +203,7 @@
           user:
             client-certificate: /var/demi/ssl/ssl.kube_controller_manager.crt
             client-key: /var/demi/ssl/ssl.kube_controller_manager.pem
+    notify: restart kube-controller-manager
 
   # Note: Cluster signing key likely needs a different CA
   - name: create kube-controller-manager service
@@ -212,6 +235,7 @@
 
         [Install]
         WantedBy=multi-user.target
+    notify: [daemon-reload, restart kube-controller-manager]
 
   - name: create kube-scheduler kubeconfig
     copy:
@@ -236,6 +260,7 @@
           user:
             client-certificate: /var/demi/ssl/ssl.kube_scheduler.crt
             client-key: /var/demi/ssl/ssl.kube_scheduler.pem
+    notify: restart kube-scheduler
 
   - name: create kube-scheduler service
     copy:
@@ -257,6 +282,7 @@
 
         [Install]
         WantedBy=multi-user.target
+    notify: [daemon-reload, restart kube-scheduler]
 
   - name: create .kube directory
     file:
@@ -292,6 +318,18 @@
       owner: "{{ item }}"
       group: "{{ item }}"
     loop: "{{ demi_users.split(',') }}"
+
+  # Start or restart all services
+  - meta: flush_handlers
+
+  - name: enable k8s control services
+    service:
+      name: "{{ item }}"
+      enabled: yes
+    loop:
+      - kube-apiserver
+      - kube-controller-manager
+      - kube-scheduler
 
   # This enables pulling logs from pods or tunneling shells to them
   - name: create kube-apiserver to kubelet communication roles

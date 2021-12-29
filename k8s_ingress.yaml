@@ -1,0 +1,164 @@
+- name: k8s ingress
+  hosts: kubes
+  gather_facts: no
+  become: yes
+
+  handlers:
+  - name: daemon-reload
+    systemd:
+      daemon_reload: yes
+
+  - name: restart demikube-ingress
+    service:
+      name: demikube-ingress
+      state: restarted
+
+  - name: reload nginx
+    service:
+      name: nginx
+      state: reloaded
+
+  tasks:
+  - name: install nginx
+    package:
+      name: nginx
+      state: present
+
+  - name: create nginx-ingresses.conf file
+    copy:
+      dest: /etc/nginx-ingresses.conf
+      content: ""
+      force: no
+
+  - name: remove default nginx config
+    file:
+      path: /etc/nginx/sites-enabled/default
+      state: absent
+    notify: reload nginx
+
+  - name: copy server config
+    copy:
+      src: site.demikube_ingress.conf
+      dest: /etc/nginx/sites-available/site.demikube_ingress.conf
+    notify: reload nginx
+
+  - name: enable server config
+    file:
+      path: /etc/nginx/sites-enabled/site.demikube_ingress.conf
+      src: /etc/nginx/sites-available/site.demikube_ingress.conf
+      state: link
+    notify: reload nginx
+
+  - name: install virtualenv
+    package:
+      name: python3-virtualenv
+      state: present
+
+  - name: install kubernetes client
+    pip:
+      name: "kubernetes>=20"
+      virtualenv: "/var/demi/k8s/venv"
+
+  # ToDo: Make a service account for it
+  - name: create worker:kube-ingress certificate
+    include_tasks: lan_ssl_sign.yaml
+    vars:
+      cert_cn: "demikube-ingress"
+      cert_filename: demikube_ingress
+      cert_orgname: demikube
+
+  - name: add role for demikube:controller:ingress
+    copy:
+      dest: /var/demi/k8s/demikube_ingress_role.yaml
+      content: |
+        ---
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: demikube:controller:ingress
+        rules:
+        - apiGroups:
+          - "networking.k8s.io"
+          resources:
+          - ingresses
+          verbs:
+          - list
+          - watch
+
+        ---
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: demikube:controller:ingress
+        roleRef:
+          kind: ClusterRole
+          name: demikube:controller:ingress
+          apiGroup: rbac.authorization.k8s.io
+        subjects:
+        - kind: User
+          name: demikube-ingress
+          namespace: kube-system
+
+  - name: apply demikube:controller:ingress role
+    command:
+      argv:
+        - /usr/local/bin/kubectl
+        - apply
+        - --kubeconfig
+        - /home/ansible/.kube/config
+        - -f
+        - /var/demi/k8s/demikube_ingress_role.yaml
+    register: kubectl_output
+    changed_when: "'created' in kubectl_output.stdout or 'modified' in kubectl_output.stdout"
+
+  - name: create demikube-ingress kubeconfig
+    copy:
+      dest: /var/demi/k8s/demikube-ingress.kubeconfig
+      content: |
+        apiVersion: v1
+        kind: Config
+        preferences: {}
+        clusters:
+        - cluster:
+            certificate-authority: /var/demi/ssl/ssl.metal.root_ca_bundle.crt
+            server: "https://{{ inventory_hostname }}:6443"
+          name: demikube
+        contexts:
+        - context:
+            cluster: demikube
+            user: "system:demikube-ingress"
+          name: default
+        current-context: default
+        users:
+        - name: "system:demikube-ingress"
+          user:
+            client-certificate: /var/demi/ssl/ssl.demikube_ingress.crt
+            client-key: /var/demi/ssl/ssl.demikube_ingress.pem
+
+  - name: copy demikube_ingress.py
+    copy:
+      dest: /var/demi/k8s/demikube_ingress.py
+      src: demikube_ingress.py
+      mode: "0755"
+
+  - name: create demikube-ingress service
+    copy:
+      dest: /etc/systemd/system/demikube-ingress.service
+      content: |
+        [Unit]
+        Description=Demikube Ingress
+        Requires=nginx.service
+
+        [Service]
+        ExecStart=/var/demi/k8s/demikube_ingress.py
+        Restart=on-failure
+        RestartSec=5
+
+        [Install]
+        WantedBy=multi-user.target
+    notify: [daemon-reload, restart demikube-ingress]
+
+  - name: enable demikube-ingress service
+    service:
+      name: demikube-ingress
+      enabled: yes

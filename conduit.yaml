@@ -1,0 +1,89 @@
+---
+# Forward all matrix.demi.ro traffic to the conduit service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: matrix
+  namespace: default
+spec:
+  rules:
+  - host: matrix.demi.ro
+    http:
+      paths:
+      - backend:
+          service:
+            name: conduit
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+
+---
+# The conduit service, forwards traffic to app=conduit pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: conduit
+  namespace: default
+  labels:
+    app: conduit
+spec:
+  type: ClusterIP
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: 80-8000
+    port: 80
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: conduit
+
+---
+# A StatefulSet to deploy conduit on 1 pod with a persistent volume
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: conduit
+spec:
+  serviceName: "conduit"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: conduit
+  template:
+    metadata:
+      labels:
+        app: conduit
+    spec:
+      containers:
+      - name: conduit
+        image: docker.io/matrixconduit/matrix-conduit:next
+        ports:
+        - containerPort: 8000
+          name: web
+        volumeMounts:
+        - name: glusterfs-vol
+          subPath: conduit
+          mountPath: /var/lib/conduit
+        env:
+        - name: CONDUIT_CONFIG
+        - name: CONDUIT_DATABASE_PATH
+          value: /var/lib/conduit/
+        - name: CONDUIT_SERVER_NAME
+          value: demi.ro
+        - name: CONDUIT_ADDRESS
+          value: 0.0.0.0
+        - name: CONDUIT_PORT
+          value: "8000"
+        - name: CONDUIT_ALLOW_REGISTRATION
+          value: "false"
+        - name: CONDUIT_ALLOW_FEDERATION
+          value: "true"
+      volumes:
+      - glusterfs:
+          endpoints: glusterfs
+          path: default-volume
+        name: glusterfs-vol

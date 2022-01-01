@@ -7,6 +7,7 @@ import logging
 import subprocess
 import itertools
 import os
+import re
 
 import kubernetes
 
@@ -16,7 +17,7 @@ log = logging.getLogger('demikube-ingress')
 
 class IngressRule(NamedTuple):
     host: Optional[str]
-    path_type: Literal['Exact']
+    prefix: bool
     path: str
     service_name: str
     service_port: Union[int, str]
@@ -44,7 +45,7 @@ def ingress_events() -> Iterator[Ingress]:
             rules=[
                 IngressRule(
                     host=rule.host,
-                    path_type=path.path_type,
+                    prefix=path.path_type == "Prefix",
                     path=path.path,
                     service_name=path.backend.service.name,
                     service_port=path.backend.service.port.name or path.backend.service.port.number,
@@ -63,9 +64,29 @@ def write_ingresses(ingresses: Dict[str, Ingress]) -> None:
 
     with open('/etc/nginx-ingresses.conf.tmp', 'w') as f:
         for host, host_rules in itertools.groupby(rules, lambda rule: rule.host):
-            # FIXME: Sanitize
+            # Proxy to just simple services in the cluster for now
+            if not re.match("^[a-z_-]+$", rule.service_name):
+                continue
+
+            service_name = rule.service_name + ".svc.cluster.local"
+
             for rule in host_rules:
-                f.write(f'"{host}/{rule.path}"\t"{rule.service_name}:{rule.service_port}";\n')
+                # Allow just simple paths
+                if not re.match("^[a-z_/-]+$", host):
+                    continue
+
+                if not re.match("^[a-z_/-]+$", rule.path):
+                    continue
+
+                if rule.prefix:
+                    path_prefix = rule.path.rstrip('/')
+                    matcher = f'~^{host}/{path_prefix}(?<path_suffix>.*)$'
+                else:
+                    matcher = f'{host}/{rule.path}'
+
+                target = f"{service_name}:{rule.service_port}"
+
+                f.write(f'"{matcher}"\t"{target}";\n')
         
     os.rename('/etc/nginx-ingresses.conf.tmp', '/etc/nginx-ingresses.conf')
 

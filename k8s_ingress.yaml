@@ -140,6 +140,7 @@
       dest: /var/demi/k8s/demikube_ingress.py
       src: demikube_ingress.py
       mode: "0755"
+    notify: restart demikube-ingress
 
   - name: create demikube-ingress service
     copy:

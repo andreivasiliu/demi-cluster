@@ -35,10 +35,16 @@ So, stuff that is already done and working via ansible:
 * Reverse proxy to my NAS through nginx
 * SingleSignOn-based key setup for NAS access, through an nginx-fronted
   uwsgi+flask server
+* Clustered etcd and glusterfs servers with persistent storage
+* A Kubernetes cluster made [the hard way](https://github.com/kelseyhightower/kubernetes-the-hard-way)
+  that resists across reboots and rebuilds, using a full container-less control plane
+* Custom simple dnsmasq-based DNS controller and nginx-based Ingress controller
+  for Kubernetes running as systemd services made in Python
+* A Matrix server via [conduit](https://gitlab.com/famedly/conduit) running as a StatefulSet in Kubernetes
 
 And finally to tie it all up, a playbook that can also destroy everything, and
-run everything above; it takes around 1 minute to run from start to end, and
-about 10 seconds to run it again just to modify things.
+run everything above; it takes around 2 minutes to run from start to end, and
+about 20 seconds to run it again just to modify things.
 
 There's also some really cool invariants for all the above steps:
 
@@ -56,6 +62,8 @@ either server even with full knowledge of the setup. However, the goal is to
 assume that vulnerabilities will exist, and can be used to gain root access to
 a server, so all internet-facing services are on the VM, and if anyone does get
 access to it, the whole VM will be regularly destroyed and recreated anyway,
-with all packages brougth up to date.
+with all packages brougth up to date. Furthermore, the cluster is behind a
+loadbalancer which also acts as a firewall, and will not allow outgoing
+connections except for the (pretty secure) NAS and the Internet.
 
 {% endfilter %}{% endblock %}

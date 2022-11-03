@@ -49,17 +49,30 @@
       state: directory
       mode: "0750"
 
-  - name: create default-volume directory
+  - name: create gluster volume directories
     file:
-      path: /mnt/persistent/gluster-bricks/default-volume
+      path: /mnt/persistent/gluster-bricks/{{item}}
       state: directory
+    loop:
+      - default-volume
+      - grafana-volume
+      - conduit-volume
+      - conduit-dev-volume
+      - synapse-dev-volume
 
-  - name: add gluster volume for Kubernetes
+  - name: add gluster volumes for Kubernetes
     gluster_volume:
-      name: default-volume
-      bricks: /mnt/persistent/gluster-bricks/default-volume
+      name: "{{item}}"
+      bricks: /mnt/persistent/gluster-bricks/{{item}}
       cluster:
         - kube1
         - kube2
       state: present
     run_once: true
+    loop:
+      - default-volume
+      - grafana-volume
+      - conduit-volume
+      - conduit-dev-volume
+      - synapse-dev-volume
+

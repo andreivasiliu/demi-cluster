@@ -66,7 +66,7 @@ def reload_dnsmasq() -> None:
 
 
 def main_loop() -> None:
-    kubernetes.config.load_kube_config("/var/demi/k8s/kube-proxy.kubeconfig")
+    kubernetes.config.load_kube_config("/var/demi/k8s/demikube.kubeconfig")
 
     hosts = {}
 

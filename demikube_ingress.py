@@ -64,17 +64,15 @@ def write_ingresses(ingresses: Dict[str, Ingress]) -> None:
 
     with open('/etc/nginx-ingresses.conf.tmp', 'w') as f:
         for host, host_rules in itertools.groupby(rules, lambda rule: rule.host):
-            # Proxy to just simple services in the cluster for now
-            if not re.match("^[a-z_-]+$", rule.service_name):
+            if not re.match("^[a-z_\\./-]+$", host):
                 continue
 
-            service_name = rule.service_name + ".svc.cluster.local"
-
             for rule in host_rules:
-                # Allow just simple paths
-                if not re.match("^[a-z_/-]+$", host):
+                # Proxy to just simple services in the cluster for now
+                if not re.match("^[a-z_\\.-]+$", rule.service_name):
                     continue
 
+                # Allow just simple paths
                 if not re.match("^[a-z_/-]+$", rule.path):
                     continue
 
@@ -84,6 +82,7 @@ def write_ingresses(ingresses: Dict[str, Ingress]) -> None:
                 else:
                     matcher = f'{host}/{rule.path}'
 
+                service_name = rule.service_name + ".svc.cluster.local"
                 target = f"{service_name}:{rule.service_port}"
 
                 f.write(f'"{matcher}"\t"{target}";\n')

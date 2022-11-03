@@ -1,0 +1,15 @@
+- hosts: demis
+  gather_facts: no
+  become: true
+
+  tasks:
+  - name: install nginx
+    package: 
+      name: nginx
+      state: present
+
+  - name: install markdown renderer
+    package:
+      name: python3-mistune
+      state: present
+      

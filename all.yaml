@@ -15,6 +15,7 @@
 - import_playbook: users.yaml
 - import_playbook: dyn_dns.yaml
 - import_playbook: acme.yaml
+- import_playbook: install_nginx.yaml
 - import_playbook: nginx.yaml
 - import_playbook: uwsgi.yaml
 - import_playbook: ttyd.yaml

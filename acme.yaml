@@ -66,6 +66,7 @@
       acme_directory: https://acme-v02.api.letsencrypt.org/directory
       terms_agreed: yes
       challenge: dns-01
+      remaining_days: 30
     register: demi_ro_challenge
     
   - name: prepare challenge response
@@ -96,4 +97,5 @@
       acme_directory: https://acme-v02.api.letsencrypt.org/directory
       terms_agreed: yes
       challenge: dns-01
+      remaining_days: 30
       data: "{{ demi_ro_challenge }}"

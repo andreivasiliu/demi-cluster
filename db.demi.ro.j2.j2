@@ -17,6 +17,9 @@ nas	IN	CNAME	demi.ro.
 books	IN	CNAME 	demi.ro.
 term	IN	CNAME	demi.ro.
 matrix	IN	CNAME	demi.ro.
+conduit-dev	IN	CNAME	demi.ro.
+synapse-dev	IN	CNAME	demi.ro.
+fluctlight-dev	IN	CNAME	demi.ro.
 
 {{ "{% set ipv6_prefix = ansible_default_ipv6.address | ipsubnet(64, 0) | replace('::/64', '') %}" }}
 {% for h in groups.all | sort %}

@@ -278,7 +278,7 @@
 
   - name: create demikube-dns kubeconfig
     copy:
-      dest: /var/demi/k8s/kube-dns.kubeconfig
+      dest: /var/demi/k8s/demikube-dns.kubeconfig
       content: |
         apiVersion: v1
         kind: Config
@@ -297,8 +297,8 @@
         users:
         - name: "system:demikube-dns"
           user:
-            client-certificate: /var/demi/ssl/ssl.kube_dns.crt
-            client-key: /var/demi/ssl/ssl.kube_dns.pem
+            client-certificate: /var/demi/ssl/ssl.demikube_dns.crt
+            client-key: /var/demi/ssl/ssl.demikube_dns.pem
 
   - name: copy demikube-dns
     copy:

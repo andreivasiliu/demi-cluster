@@ -1,0 +1,13 @@
+- hosts: kubes
+  gather_facts: no
+  become: yes
+
+  tasks:
+  - name: evict pods from Kubernetes node
+    command:
+      argv:
+        - /usr/local/bin/kubectl
+        - drain
+        - --kubeconfig
+        - /home/ansible/.kube/config
+        - "{{ inventory_hostname }}"

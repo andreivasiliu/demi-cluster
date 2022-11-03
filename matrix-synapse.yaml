@@ -1,0 +1,80 @@
+---
+# Forward all synapse-dev.demi.ro traffic to the conduit service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: matrix-synapse-dev
+  namespace: default
+spec:
+  rules:
+  - host: synapse-dev.demi.ro
+    http:
+      paths:
+      - backend:
+          service:
+            name: mitmproxy-synapse
+            port:
+              number: 6080
+        path: /
+        pathType: Prefix
+
+---
+# The matrix-synapse service, forwards traffic to app=matrix-synapse pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: synapse-dev
+  namespace: default
+  labels:
+    app: synapse-dev
+spec:
+  type: ClusterIP
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: 80-8008
+    port: 80
+    protocol: TCP
+    targetPort: 8008
+  selector:
+    app: synapse-dev
+
+---
+# A StatefulSet to deploy conduit on 1 pod with a persistent volume
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: synapse-dev
+spec:
+  serviceName: "synapse-dev"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: synapse-dev
+  template:
+    metadata:
+      labels:
+        app: synapse-dev
+    spec:
+      containers:
+      - name: synapse-dev
+        image: docker.io/matrixdotorg/synapse:latest
+        ports:
+        - containerPort: 8008
+          name: web
+        volumeMounts:
+        - name: glusterfs-vol
+          subPath: synapse
+          mountPath: /data
+        env:
+        - name: SYNAPSE_SERVER_NAME
+          value: synapse-dev.demi.ro
+        - name: SYNAPSE_REPORT_STATS
+          value: "no"
+      volumes:
+      - glusterfs:
+          endpoints: glusterfs
+          path: synapse-dev-volume
+        name: glusterfs-vol

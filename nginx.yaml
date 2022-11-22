@@ -49,14 +49,20 @@
       - about.html
     tags: www
     notify: reload nginx
-      
+
+  - name: copy logging config
+    copy:
+      src: syslog_nginx.conf
+      dest: /etc/nginx/conf.d/syslog.conf
+    notify: reload nginx
+
   - name: copy server config
     copy:
       src: site.443.conf
       dest: /etc/nginx/sites-available/site.443.conf
     notify: reload nginx
     tags: site
-      
+
   - name: enable server config
     file:
       path: /etc/nginx/sites-enabled/site.443.conf
